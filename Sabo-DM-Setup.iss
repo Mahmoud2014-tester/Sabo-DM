@@ -21,8 +21,8 @@ PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: checked
-Name: "startup"; Description: "Run Sabo DM at Windows startup"; GroupDescription: "Startup:"; Flags: checked
+Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"
+Name: "startup"; Description: "Run Sabo DM at Windows startup"; GroupDescription: "Startup:"
 
 [Files]
 Source: "Sabo-DM.exe"; DestDir: "{app}"; Flags: ignoreversion
