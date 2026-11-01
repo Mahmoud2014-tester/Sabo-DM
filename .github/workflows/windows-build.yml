@@ -42,8 +42,11 @@ jobs:
 
       - name: Build GUI executable
         shell: pwsh
-        run: $version = "1.29.0-dev"
-          if ("${{ github.ref_type }}" -eq "tag") { $version = "${{ github.ref_name }}" }
+        run: |
+          $version = "1.29.0-dev"
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}"
+          }
           go build -trimpath -ldflags="-s -w -H windowsgui -X main.AppVersion=$version" -o Sabo-DM.exe .
 
       - name: Build diagnostic executable
