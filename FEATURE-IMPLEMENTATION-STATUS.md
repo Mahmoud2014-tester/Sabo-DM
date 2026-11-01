@@ -55,3 +55,16 @@
 - [x] Retained the previous Win/Walk entry point only behind the `legacyui` build tag.
 - [ ] Windows compile and runtime launch verification still required on GitHub Actions / a Windows machine.
 - [ ] Full feature completion remains separate: queue/category editing, speed caps at per-item/per-queue scope, scheduler, post-download actions, and credential manager still need implementation and tests.
+
+
+## WebView2 window controls and dashboard actions
+
+- [x] Added Minimize control bound to Win32 `ShowWindow(SW_MINIMIZE)`.
+- [x] Added Maximize/Restore toggle bound to Win32 `IsZoomed`, `ShowWindow(SW_MAXIMIZE/SW_RESTORE)`.
+- [x] Added Exit control with confirmation and orderly WebView2 close request.
+- [x] Added a functional Settings panel for dark/light appearance preference.
+- [x] Persisted theme preference in WebView2 local storage.
+- [x] Connected global speed-limit presets to the Go transfer engine API.
+- [ ] Queue creation/editing and category management still need backend implementation.
+- [ ] Settings for download folder, startup, scheduling, and credentials are not yet exposed in this panel.
+- [ ] Must verify actual button behavior on Windows after GitHub Actions build.

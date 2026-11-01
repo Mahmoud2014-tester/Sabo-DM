@@ -10,5 +10,43 @@ function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 async function refresh(){try{downloads=await request('/downloads');render();$('#engineStatus').textContent='Connected to Sabo DM';}catch(e){$('#engineStatus').textContent='App engine offline';}}
 async function action(action,index=-1,url=''){if(busy)return;busy=true;try{await request('/action',{method:'POST',body:JSON.stringify({action,index,url})});await refresh();toast(action==='add'?'Download added to Sabo DM': 'Command sent to Sabo DM')}catch(e){toast(e.message||'Could not contact Sabo DM')}finally{busy=false}}
 $('#add').onclick=()=>{const urls=$('#url').value.split(/\s+/).filter(Boolean);if(!urls.length)return toast('Paste at least one URL');(async()=>{for(const url of urls)await action('add',-1,url);$('#url').value=''})()};$('#url').addEventListener('keydown',e=>{if(e.key==='Enter')$('#add').click()});$('#search').oninput=render;
-document.querySelectorAll('.nav[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll('.nav[data-filter]').forEach(x=>x.classList.toggle('active',x===b));render()});$('#rows').onclick=e=>{const b=e.target.closest('button[data-act]');if(b)action(b.dataset.act,Number(b.dataset.id))};$('#clear').onclick=()=>{$('#search').value='';filter='all';document.querySelectorAll('.nav[data-filter]').forEach(x=>x.classList.toggle('active',x.dataset.filter==='all'));render()};$('#pauseAll').onclick=async()=>{for(const x of downloads.filter(x=>state(x)==='Downloading'))await action('pause',x.Index)};$('#theme').onclick=()=>document.body.classList.toggle('light');$('#addQueue').onclick=()=>toast('Queue creation is not yet connected');
+document.querySelectorAll('.nav[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll('.nav[data-filter]').forEach(x=>x.classList.toggle('active',x===b));render()});$('#rows').onclick=e=>{const b=e.target.closest('button[data-act]');if(b)action(b.dataset.act,Number(b.dataset.id))};$('#clear').onclick=()=>{$('#search').value='';filter='all';document.querySelectorAll('.nav[data-filter]').forEach(x=>x.classList.toggle('active',x.dataset.filter==='all'));render()};$('#pauseAll').onclick=async()=>{for(const x of downloads.filter(x=>state(x)==='Downloading'))await action('pause',x.Index)};$('#theme').onclick=()=>{document.body.classList.toggle('light');try{localStorage.setItem('sabo-theme',document.body.classList.contains('light')?'light':'dark')}catch(_){}};$('#addQueue').onclick=()=>toast('Queue creation is not yet connected');
 refresh();setInterval(refresh,1200);
+
+
+// Native WebView2 window controls. These call Go bindings, not browser-only UI tricks.
+$('#winMin')?.addEventListener('click',()=>window.saboMinimize?.());
+$('#winMax')?.addEventListener('click',()=>window.saboToggleMaximize?.());
+$('#winClose')?.addEventListener('click',()=>{
+  if(confirm('Exit Sabo DM? Active downloads may be interrupted.')) window.saboClose?.();
+});
+
+// Quick settings panel with a persistent appearance preference.
+const settingsPanel=$('#settingsPanel');
+function closeSettings(){settingsPanel?.classList.add('hidden')}
+$('#settings')?.addEventListener('click',()=>{
+  const light=document.body.classList.contains('light');
+  $('#appearance').value=light?'light':'dark';
+  settingsPanel?.classList.remove('hidden');
+});
+$('#settingsClose')?.addEventListener('click',closeSettings);
+$('#settingsDone')?.addEventListener('click',()=>{
+  document.body.classList.toggle('light',$('#appearance').value==='light');
+  try{localStorage.setItem('sabo-theme',$('#appearance').value)}catch(_){}
+  closeSettings();
+});
+settingsPanel?.addEventListener('click',e=>{if(e.target===settingsPanel)closeSettings()});
+try{if(localStorage.getItem('sabo-theme')==='light')document.body.classList.add('light')}catch(_){}
+
+// Apply the global speed limit to the Go transfer engine. Values are KiB/s; zero means unlimited.
+const speedSelect=document.querySelector('.detailfoot select');
+if(speedSelect){
+  speedSelect.id='speedLimit';
+  speedSelect.addEventListener('change',async()=>{
+    const map={'Unlimited':0,'1 MB/s':1024,'5 MB/s':5120,'10 MB/s':10240};
+    const kb=map[speedSelect.value];
+    if(kb===undefined)return toast('Unsupported speed preset');
+    try{await request('/action',{method:'POST',body:JSON.stringify({action:'set-speed',index:kb})});toast('Global speed limit updated')}
+    catch(e){toast(e.message||'Could not update speed limit')}
+  });
+}

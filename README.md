@@ -59,3 +59,10 @@ The default Windows executable now starts the Sabo DM dashboard as its **main de
 - The Microsoft Edge WebView2 Runtime must be installed on the Windows machine. Windows 11 and most updated Windows 10 installations already include the Evergreen runtime; otherwise install the official runtime: https://developer.microsoft.com/microsoft-edge/webview2/
 
 The default build uses `main_webview_windows.go`. The legacy native UI can be built explicitly with `go build -tags legacyui` (not recommended for normal use).
+
+
+## Dashboard controls and settings
+
+The dashboard includes in-window Minimize, Maximize/Restore, and Exit buttons. They call Go WebView2 bindings and operate on the real Windows host window. Exit asks for confirmation before closing the application.
+
+The Settings button opens an appearance panel (dark/light). The global speed-limit selector sends the selected preset to the Go transfer engine. Other controls should only be considered implemented when their corresponding API/backend behavior is documented here and tested; queue/category management and per-download/per-queue limits are still pending.

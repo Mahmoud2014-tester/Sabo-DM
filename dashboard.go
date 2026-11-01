@@ -110,7 +110,7 @@ func startDashboardServer(q *Queue, saveDir string, dispatch func(func())) {
 			http.Error(w, "invalid JSON", 400)
 			return
 		}
-		if a.Action != "add" && a.Action != "start" && a.Action != "pause" && a.Action != "remove" && a.Action != "clear-done" {
+		if a.Action != "add" && a.Action != "start" && a.Action != "pause" && a.Action != "remove" && a.Action != "clear-done" && a.Action != "set-speed" {
 			http.Error(w, "unsupported action", 400)
 			return
 		}
@@ -137,6 +137,12 @@ func startDashboardServer(q *Queue, saveDir string, dispatch func(func())) {
 				q.Remove([]int{a.Index})
 			case "clear-done":
 				q.ClearDone()
+			case "set-speed":
+				if a.Index < 0 {
+					err = fmt.Errorf("speed limit must be zero or greater")
+				} else {
+					setSpeedLimit(int64(a.Index) * 1024)
+				}
 			}
 			done <- err
 		})

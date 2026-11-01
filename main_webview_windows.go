@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"syscall"
 	"time"
 
 	webview2 "github.com/jchv/go-webview2"
@@ -49,6 +50,28 @@ func main() {
 		return
 	}
 	defer wv.Destroy()
+
+	// Expose real Windows window-management actions to the dashboard.
+	hwnd := uintptr(wv.Window())
+	user32 := syscall.NewLazyDLL("user32.dll")
+	showWindow := user32.NewProc("ShowWindow")
+	isZoomed := user32.NewProc("IsZoomed")
+	_ = wv.Bind("saboMinimize", func() {
+		wv.Dispatch(func() { showWindow.Call(hwnd, 6) }) // SW_MINIMIZE
+	})
+	_ = wv.Bind("saboToggleMaximize", func() {
+		wv.Dispatch(func() {
+			zoomed, _, _ := isZoomed.Call(hwnd)
+			if zoomed != 0 {
+				showWindow.Call(hwnd, 9) // SW_RESTORE
+			} else {
+				showWindow.Call(hwnd, 3) // SW_MAXIMIZE
+			}
+		})
+	})
+	_ = wv.Bind("saboClose", func() {
+		wv.Dispatch(func() { wv.Destroy() })
+	})
 
 	q := &Queue{MaxParallel: cfg.Parallel, MaxSegments: cfg.MaxSegments}
 	q.post = wv.Dispatch
