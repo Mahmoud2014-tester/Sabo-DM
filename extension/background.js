@@ -126,14 +126,70 @@ function extType(name, mime) {
   const types = { mp4:"Video (MP4)",mkv:"Video (MKV)",webm:"Video (WebM)",mp3:"Audio (MP3)",m4a:"Audio (M4A)",wav:"Audio (WAV)",pdf:"PDF document",zip:"ZIP archive",rar:"RAR archive",exe:"Windows application",msi:"Windows installer",jpg:"Image (JPEG)",png:"Image (PNG)",torrent:"Torrent file" };
   return types[ext] || (ext ? ext.toUpperCase() + " file" : "Unknown file type");
 }
+const pendingKey = id => "pendingDownload_" + id;
+async function readPending(id) {
+  const key = pendingKey(id);
+  const stored = await chrome.storage.local.get([key, "pendingDownloads"]);
+  return stored[key] || stored.pendingDownloads?.[id] || null;
+}
+async function removePending(id) {
+  await chrome.storage.local.remove(pendingKey(id));
+  // Remove an older-format record too, if a user upgraded with a popup open.
+  const old = (await chrome.storage.local.get("pendingDownloads")).pendingDownloads || {};
+  if (old[id]) { delete old[id]; await chrome.storage.local.set({ pendingDownloads: old }); }
+}
+async function resumeBrowserDownload(data) {
+  if (data?.source === "browser" && Number.isInteger(data.downloadId)) {
+    try { await chrome.downloads.resume(data.downloadId); } catch (_) {}
+  }
+}
 async function openConfirm(data) {
   const id = crypto.randomUUID();
-  const pending = (await chrome.storage.local.get("pendingDownloads")).pendingDownloads || {};
-  pending[id] = { ...data, createdAt: Date.now() };
-  await chrome.storage.local.set({ pendingDownloads: pending });
-  await chrome.windows.create({ url: chrome.runtime.getURL("confirm.html?id=" + encodeURIComponent(id)), type: "popup", width: 520, height: 570, focused: true });
+  const key = pendingKey(id);
+  await chrome.storage.local.set({ [key]: { ...data, id, state: "awaiting", createdAt: Date.now() } });
+  try {
+    const win = await chrome.windows.create({
+      url: chrome.runtime.getURL("confirm.html?id=" + encodeURIComponent(id)),
+      type: "popup", width: 560, height: 620, focused: true
+    });
+    await chrome.storage.local.set({ [key]: { ...data, id, state: "awaiting", createdAt: Date.now(), windowId: win.id } });
+    return id;
+  } catch (error) {
+    await removePending(id);
+    await resumeBrowserDownload(data);
+    throw error;
+  }
 }
-async function send(data, action) {
+async function cleanupPendingDownloads() {
+  const all = await chrome.storage.local.get(null);
+  const now = Date.now();
+  for (const [key, data] of Object.entries(all)) {
+    if (!key.startsWith("pendingDownload_") || !data || !data.createdAt) continue;
+    const age = now - data.createdAt;
+    if (age < 30 * 60 * 1000) continue;
+    // Recover requests orphaned by a browser/service-worker restart, including
+    // a processing state left behind if the app or popup was terminated.
+    await resumeBrowserDownload(data);
+    await chrome.storage.local.remove(key);
+  }
+}
+chrome.windows.onRemoved.addListener(async windowId => {
+  const all = await chrome.storage.local.get(null);
+  for (const [key, data] of Object.entries(all)) {
+    if (!key.startsWith("pendingDownload_") || data?.windowId !== windowId) continue;
+    if (data.state === "processing") {
+      await chrome.storage.local.set({ [key]: { ...data, closeRequested: true } });
+    } else {
+      await resumeBrowserDownload(data);
+      await chrome.storage.local.remove(key);
+    }
+  }
+});
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === "sabo-pending-cleanup") cleanupPendingDownloads().catch(() => {});
+});
+
+async function send(data, action, audioFormat = "original") {
   const { useLogin = false } = await chrome.storage.local.get("useLogin");
   const kind = data.kind || "";
   const cookie = kind === "video" || kind === "torrent" ? "" : await cookieHeader(data.url);
@@ -141,10 +197,19 @@ async function send(data, action) {
   if ((kind === "video" || kind === "audio") && useLogin && cookieScopeForHost(new URL(data.url).hostname).length && cookies.length === 0) {
     throw new Error("No active site cookies were found. Sign in to this learning platform in the same browser, refresh the course page, and try again. Your password is never requested or collected by Sabo DM.");
   }
-  const r = await fetch(API + "/add", {
-    method: "POST", headers: { "Content-Type": "application/json", "X-Sabo-DM": "1" },
-    body: JSON.stringify({ url:data.url, referrer:data.referrer||"", cookie, cookies, kind, action, audioOnly:!!data.audioOnly, name:cleanFilename(data.name, data.url), size:data.size||0 })
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let r;
+  try {
+    r = await fetch(API + "/add", {
+      method: "POST", headers: { "Content-Type": "application/json", "X-Sabo-DM": "1" },
+      body: JSON.stringify({ url:data.url, referrer:data.referrer||"", cookie, cookies, kind, action, audioOnly:!!data.audioOnly, audioFormat, name:cleanFilename(data.name, data.url), size:data.size||0 }),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("Sabo DM did not respond in time. The browser download was kept so you can retry.");
+    throw error;
+  } finally { clearTimeout(timeout); }
   if (!r.ok) throw new Error(await r.text().catch(() => "Sabo DM rejected the download"));
 }
 
@@ -155,19 +220,35 @@ chrome.downloads.onCreated.addListener(async item => {
   if (!enabled || item.state !== "in_progress") return;
   const url = normalizeSocialUrl(item.finalUrl || item.url);
   if (!/^https?:/i.test(url) || !(await alive())) return;
-  try { await chrome.downloads.pause(item.id); } catch (_) {}
+  // Only take over downloads that Chrome confirms are paused. Some servers
+  // do not support pause; in that case leave the browser download untouched.
+  try {
+    await chrome.downloads.pause(item.id);
+    const [pausedItem] = await chrome.downloads.search({ id: item.id });
+    if (!pausedItem || pausedItem.state !== "in_progress" || !pausedItem.paused) return;
+  } catch (_) {
+    return;
+  }
   try {
     await openConfirm({ source:"browser", downloadId:item.id, url, referrer:item.referrer||"", name:item.filename?.split(/[\\/]/).pop() || url.split("/").pop() || "download", size:item.totalBytes||item.fileSize||0, mime:item.mime||"", type:extType(item.filename, item.mime), kind:/\.torrent(?:$|\?)/i.test(url) ? "torrent" : "" });
   } catch (_) { try { await chrome.downloads.resume(item.id); } catch (_) {} }
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  chrome.alarms.create("sabo-pending-cleanup", { periodInMinutes: 5 });
+  await chrome.contextMenus.removeAll();
   chrome.contextMenus.create({ id:"saber-link", title:"Download with Sabo DM…", contexts:["link","audio"] });
   chrome.contextMenus.create({ id:"saber-video", title:"Download video with Sabo DM…", contexts:["page","video"] });
-  chrome.contextMenus.create({ id:"saber-torrent", title:"Add torrent with Sabo DM…", contexts:["link"] });
+  chrome.contextMenus.create({ id:"saber-torrent", title:"Add torrent to Sabo DM…", contexts:["link"] });
+  const stored = await chrome.storage.local.get("extensionLanguage");
+  if (!stored.extensionLanguage) await chrome.storage.local.set({extensionLanguage:"en"});
+  await syncExtensionLanguage();
+});
+chrome.runtime.onStartup.addListener(() => {
+  chrome.alarms.create("sabo-pending-cleanup", { periodInMinutes: 5 });
+  cleanupPendingDownloads().catch(() => {});
   chrome.storage.local.get("extensionLanguage").then(v => { if (!v.extensionLanguage) return chrome.storage.local.set({extensionLanguage:"en"}); }).finally(syncExtensionLanguage);
 });
-chrome.runtime.onStartup.addListener(() => { chrome.storage.local.get("extensionLanguage").then(v => { if (!v.extensionLanguage) return chrome.storage.local.set({extensionLanguage:"en"}); }).finally(syncExtensionLanguage); });
 chrome.contextMenus.onClicked.addListener(async (info) => {
   const isVideo = info.menuItemId === "saber-video";
   const isTorrent = info.menuItemId === "saber-torrent";
@@ -186,7 +267,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!(await alive())) throw new Error("Start Sabo DM first");
     const normalizedUrl = normalizeSocialUrl(msg.url);
     const name = cleanFilename(msg.name || "", normalizedUrl);
-    await openConfirm({ source:"content", url:normalizedUrl, referrer:msg.referrer||"", name, size:0, type:msg.mediaType||"Video or audio stream", kind:msg.direct ? "" : (msg.audioOnly ? "audio" : "video"), audioOnly:!!msg.audioOnly });
+    await openConfirm({ source:"content", url:normalizedUrl, referrer:msg.referrer||"", name, size:0, type:msg.mediaType||"Video or audio stream", kind:msg.audioOnly && !msg.direct ? "audio" : (msg.direct ? "" : "video"), audioOnly:!!msg.audioOnly });
     sendResponse({ ok:true });
   })().catch(e => sendResponse({ ok:false, error:e.message }));
   return true;
@@ -195,23 +276,65 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || msg.type !== "confirm-action") return;
   (async () => {
-    const stored = await chrome.storage.local.get("pendingDownloads");
-    const pending = stored.pendingDownloads || {};
-    const data = pending[msg.id];
-    if (!data) throw new Error("This download request has expired.");
+    const key = pendingKey(msg.id);
+    let data = await readPending(msg.id);
+    if (!data) throw new Error("This download request has expired. Retry from the browser page.");
+    if (data.state === "processing") throw new Error("This request is already being processed.");
+    data = { ...data, state: "processing", processingAt: Date.now() };
+    await chrome.storage.local.set({ [key]: data });
+
     if (msg.action === "cancel") {
-      if (data.downloadId != null) { try { await chrome.downloads.cancel(data.downloadId); } catch (_) {} try { await chrome.downloads.erase({ id:data.downloadId }); } catch (_) {} }
-      delete pending[msg.id]; await chrome.storage.local.set({ pendingDownloads:pending });
-      sendResponse({ ok:true }); return;
+      if (data.downloadId != null) {
+        try { await chrome.downloads.cancel(data.downloadId); } catch (_) {}
+        try { await chrome.downloads.erase({ id: data.downloadId }); } catch (_) {}
+      }
+      await removePending(msg.id);
+      sendResponse({ ok: true });
+      return;
     }
-    await send(data, msg.action === "queue" ? "queue" : "download");
-    if (data.downloadId != null) { try { await chrome.downloads.cancel(data.downloadId); } catch (_) {} try { await chrome.downloads.erase({ id:data.downloadId }); } catch (_) {} }
-    delete pending[msg.id]; await chrome.storage.local.set({ pendingDownloads:pending });
-    flash(msg.action === "queue" ? "Q" : "OK", "#15803d");
-    sendResponse({ ok:true });
-  })().catch(e => sendResponse({ ok:false, error:e.message }));
+
+    try {
+      const selectedData = { ...data, audioOnly: !!msg.audioOnly };
+      await send(selectedData, msg.action === "queue" ? "queue" : "download", msg.audioFormat || "original");
+      // Only cancel the browser's paused copy after the desktop engine returned
+      // HTTP 202 (accepted and queued). If the app rejects the request, the
+      // original browser download remains paused and the user can retry.
+      if (data.downloadId != null) {
+        try { await chrome.downloads.cancel(data.downloadId); } catch (_) {}
+        try { await chrome.downloads.erase({ id: data.downloadId }); } catch (_) {}
+      }
+      await removePending(msg.id);
+      flash(msg.action === "queue" ? "Q" : "OK", "#15803d");
+      sendResponse({ ok: true, accepted: true });
+    } catch (error) {
+      const current = await readPending(msg.id);
+      if (current?.closeRequested) {
+        await resumeBrowserDownload(current);
+        await removePending(msg.id);
+      } else if (current) {
+        await chrome.storage.local.set({ [key]: { ...current, state: "awaiting", processingAt: 0 } });
+      }
+      throw error;
+    }
+  })().catch(e => sendResponse({ ok: false, error: e.message || String(e) }));
   return true;
 });
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === "show-app") {
+    fetch(API + "/show", { method: "POST", headers: { "X-Sabo-DM": "1" } })
+      .then(r => { if (!r.ok) throw new Error("Sabo DM could not be opened"); return { ok: true }; })
+      .then(sendResponse).catch(e => sendResponse({ ok: false, error: e.message }));
+    return true;
+  }
+  if (msg?.type === "engine-capabilities") {
+    fetch(API + "/capabilities", { cache: "no-store" })
+      .then(r => { if (!r.ok) throw new Error("Sabo DM is not available"); return r.json(); })
+      .then(sendResponse).catch(e => sendResponse({ ok: false, error: e.message }));
+    return true;
+  }
+});
+
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === "get-saber-language") { chrome.storage.local.get("extensionLanguage").then(v => { activeLanguage = ["en","ar","fr"].includes(v.extensionLanguage) ? v.extensionLanguage : "en"; sendResponse({language:activeLanguage}); }); return true; }

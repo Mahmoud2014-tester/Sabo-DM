@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -31,20 +32,22 @@ func getAppLanguage() string {
 }
 
 type addReq struct {
-	URL      string      `json:"url"`
-	Referrer string      `json:"referrer"`
-	Cookie   string      `json:"cookie"`
-	Kind     string      `json:"kind"`    // "video", "audio", or "torrent"; empty = normal file
-	Cookies  []cookieRec `json:"cookies"` // login cookies for video pages (optional)
-	Action   string      `json:"action"`  // download or queue
-	Name     string      `json:"name"`
-	Size     int64       `json:"size"`
+	URL         string      `json:"url"`
+	Referrer    string      `json:"referrer"`
+	Cookie      string      `json:"cookie"`
+	Kind        string      `json:"kind"`    // "video", "audio", or "torrent"; empty = normal file
+	Cookies     []cookieRec `json:"cookies"` // login cookies for video pages (optional)
+	Action      string      `json:"action"`  // download or queue
+	Name        string      `json:"name"`
+	Size        int64       `json:"size"`
+	AudioOnly   bool        `json:"audioOnly"`
+	AudioFormat string      `json:"audioFormat"`
 }
 
 // startServer listens on 127.0.0.1 only. A web page cannot use it:
 // requests must come from a browser extension (Origin check), carry a
 // custom header (which forces a CORS preflight), and use our own Host.
-func startServer(onAdd func(addReq), onShow func()) {
+func startServer(onAdd func(addReq) error, onShow func()) {
 	guard := func(w http.ResponseWriter, r *http.Request) bool {
 		if r.Host != apiAddr && r.Host != "localhost:19345" {
 			http.Error(w, "bad host", http.StatusForbidden)
@@ -72,6 +75,23 @@ func startServer(onAdd func(addReq), onShow func()) {
 		if guard(w, r) {
 			w.Write([]byte("sabo-dm"))
 		}
+	})
+	mux.HandleFunc("/capabilities", func(w http.ResponseWriter, r *http.Request) {
+		if !guard(w, r) {
+			return
+		}
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		_, ffErr := ffmpegReady()
+		_, ytErr := os.Stat(findTool("yt-dlp.exe"))
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"app": "Sabo DM", "version": AppVersion,
+			"ffmpegReady": ffErr == nil, "ytDlpReady": ytErr == nil,
+			"audioFormats": []string{"original", "mp3", "m4a", "aac", "opus", "wav", "flac"},
+		})
 	})
 	mux.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
 		if !guard(w, r) {
@@ -144,8 +164,12 @@ func startServer(onAdd func(addReq), onShow func()) {
 				return
 			}
 		}
-		onAdd(req)
-		w.Write([]byte("ok"))
+		if err := onAdd(req); err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"ok":true,"accepted":true}`))
 	})
 
 	srv := &http.Server{Addr: apiAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}

@@ -66,3 +66,23 @@ The default build uses `main_webview_windows.go`. The legacy native UI can be bu
 The dashboard includes in-window Minimize, Maximize/Restore, and Exit buttons. They call Go WebView2 bindings and operate on the real Windows host window. Exit asks for confirmation before closing the application.
 
 The Settings button opens an appearance panel (dark/light). The global speed-limit selector sends the selected preset to the Go transfer engine. Other controls should only be considered implemented when their corresponding API/backend behavior is documented here and tested; queue/category management and per-download/per-queue limits are still pending.
+
+
+## Browser extension refresh and synchronized hand-off
+
+For an upgrade, remove the previous Sabo DM extension from `chrome://extensions` / `edge://extensions`, then load the new extracted `extension` directory using **Load unpacked**. Do not keep two Sabo DM extension copies enabled simultaneously. The extension version is now 1.29.0.
+
+The confirmation window supports choosing Video or audio output (MP3, M4A, AAC, Opus, WAV, FLAC, or original audio). The extension sends one request to the desktop bridge; the browser's paused copy is cancelled only after the local Go application accepts the request. If the desktop application rejects or times out, the original browser download is resumed so the user does not lose it.
+
+Audio extraction/conversion from supported media pages uses yt-dlp and FFmpeg/FFprobe. The app offers Install FFmpeg in Settings; conversion formats remain disabled until FFmpeg and FFprobe pass execution checks.
+
+## Publishing updateable releases
+
+The in-app **Settings → Update Version** feature checks the latest stable GitHub Release. To publish an update that the installed app can install:
+
+1. Push the source changes to `main`.
+2. Create and push a semantic version tag, e.g. `v1.29.0`.
+3. The `Sabo DM stable release` workflow runs tests, builds `Sabo-DM.exe`, `Sabo-DM-Diagnostic.exe`, packages `Sabo-DM-Extension.zip`, and attaches them to a GitHub Release.
+4. Users can then use **Settings → Update Version → Check for updates**.
+
+The updater downloads only the `Sabo-DM.exe` asset from a published stable GitHub Release, validates its size, PE architecture and GitHub SHA-256 digest when supplied, stages it, then restarts the application to replace the running executable. It does not silently install arbitrary branch commits.

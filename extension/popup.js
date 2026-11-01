@@ -1,24 +1,15 @@
-const i18n={
- en:{takeover:"Take over browser downloads",login:"Use my login for videos",hint:"When enabled, cookies for supported video, learning and social sites (Facebook, Instagram and X) are sent to Sabo DM on this computer. Off by default.",checking:"Checking…",connected:"App connected",offline:"App not running",languageLabel:"Extension language",languageSource:"Extension language is independent from desktop language."},
- ar:{takeover:"إدارة تنزيلات المتصفح",login:"استخدام تسجيل دخولي للفيديوهات",hint:"عند التفعيل، تُرسل ملفات تعريف الارتباط لمواقع الفيديو والتعلّم والتواصل المدعومة (Facebook وInstagram وX) إلى Sabo DM على هذا الكمبيوتر. الخيار معطّل افتراضيًا.",checking:"جارٍ التحقق…",connected:"التطبيق متصل",offline:"التطبيق غير مشغّل",languageLabel:"لغة الإضافة",languageSource:"لغة الإضافة مستقلة عن لغة تطبيق سطح المكتب."},
- fr:{takeover:"Gérer les téléchargements du navigateur",login:"Utiliser ma session pour les vidéos",hint:"Activés, les cookies des sites vidéo, d’apprentissage et sociaux pris en charge (Facebook, Instagram et X) sont transmis à Sabo DM sur cet ordinateur. Désactivé par défaut.",checking:"Vérification…",connected:"Application connectée",offline:"Application non démarrée",languageLabel:"Langue de l’extension",languageSource:"La langue de l’extension est indépendante de celle de l’application."}
+const strings={
+ en:{sub:"BROWSER INTEGRATION",openApp:"Open Sabo DM",integration:"Download integration",takeover:"Show confirmation for browser downloads",takeoverHint:"When enabled, supported browser downloads pause while you choose Download, Add to Queue, or Cancel.",login:"Use signed-in site cookies for media",loginHint:"Only use this for sites where you are signed in. Cookies are transferred to the local desktop app for the selected media URL.",language:"Extension language",recheck:"Check connection",checking:"Checking desktop connection…",connected:"Sabo DM is connected",disconnected:"Sabo DM is not running",connectionHint:"Local connection · 127.0.0.1",openFailed:"Could not open Sabo DM. Start the desktop application first."},
+ ar:{sub:"تكامل المتصفح",openApp:"فتح Sabo DM",integration:"تكامل التنزيلات",takeover:"عرض نافذة تأكيد لتنزيلات المتصفح",takeoverHint:"عند التفعيل، تتوقف التنزيلات المدعومة مؤقتًا حتى تختار التنزيل أو الإضافة إلى القائمة أو الإلغاء.",login:"استخدام جلسة تسجيل الدخول لمواقع الوسائط",loginHint:"استخدم هذا الخيار فقط للمواقع التي سجلت الدخول إليها. تُرسل ملفات تعريف الارتباط إلى التطبيق المحلي للرابط المحدد فقط.",language:"لغة الإضافة",recheck:"فحص الاتصال",checking:"جارٍ فحص اتصال التطبيق…",connected:"Sabo DM متصل",disconnected:"تطبيق Sabo DM غير مشغّل",connectionHint:"اتصال محلي · 127.0.0.1",openFailed:"تعذر فتح Sabo DM. شغّل تطبيق سطح المكتب أولاً."},
+ fr:{sub:"INTÉGRATION NAVIGATEUR",openApp:"Ouvrir Sabo DM",integration:"Intégration des téléchargements",takeover:"Afficher la confirmation des téléchargements",takeoverHint:"Lorsque cette option est activée, les téléchargements pris en charge sont suspendus jusqu’à votre choix.",login:"Utiliser les cookies des sites connectés",loginHint:"À utiliser uniquement sur les sites où vous êtes connecté. Les cookies du lien sélectionné sont transmis à l’application locale.",language:"Langue de l’extension",recheck:"Vérifier la connexion",checking:"Vérification de la connexion…",connected:"Sabo DM est connecté",disconnected:"Sabo DM n’est pas lancé",connectionHint:"Connexion locale · 127.0.0.1",openFailed:"Impossible d’ouvrir Sabo DM. Lancez d’abord l’application."}
 };
-const box=document.getElementById("enabled");
-const login=document.getElementById("useLogin");
-const status=document.getElementById("status");
-const languageSelect=document.getElementById("extensionLanguage");
-let currentLang="en";
-function applyLanguage(lang){currentLang=["en","ar","fr"].includes(lang)?lang:"en";const t=i18n[currentLang];document.documentElement.lang=currentLang;document.documentElement.dir=currentLang==="ar"?"rtl":"ltr";document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t[el.dataset.i18n]||"");}
-async function syncLanguage(){
- const stored=await chrome.storage.local.get("extensionLanguage");
- currentLang=["en","ar","fr"].includes(stored.extensionLanguage)?stored.extensionLanguage:"en";
- languageSelect.value=currentLang; applyLanguage(currentLang);
- try{const r=await fetch("http://127.0.0.1:19345/ping",{cache:"no-store"});if(!r.ok)throw new Error("offline");status.textContent=i18n[currentLang].connected;status.className="ok";}
- catch(_){status.textContent=i18n[currentLang].offline;status.className="off";}
-}
-languageSelect.addEventListener("change",async()=>{currentLang=languageSelect.value;await chrome.storage.local.set({extensionLanguage:currentLang});applyLanguage(currentLang);status.textContent=i18n[currentLang].checking;syncLanguage();});
-chrome.storage.onChanged.addListener((changes,area)=>{if(area==="local"&&changes.extensionLanguage)syncLanguage();});
-chrome.storage.local.get(["enabled","useLogin"]).then(({enabled=true,useLogin=false})=>{box.checked=enabled;login.checked=useLogin;});
-box.addEventListener("change",()=>chrome.storage.local.set({enabled:box.checked}));
-login.addEventListener("change",()=>chrome.storage.local.set({useLogin:login.checked}));
-syncLanguage();
+const $=id=>document.getElementById(id);let lang="en";
+function applyLanguage(){const t=strings[lang]||strings.en;document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t[el.dataset.i18n]||"");}
+async function refreshConnection(){const t=strings[lang]||strings.en;$('statusTitle').textContent=t.checking;$('dot').classList.remove('ok');try{const r=await fetch('http://127.0.0.1:19345/ping',{cache:'no-store'});const body=await r.text();if(!r.ok||body!=='sabo-dm')throw Error('offline');$('statusTitle').textContent=t.connected;$('statusInfo').textContent=t.connectionHint;$('dot').classList.add('ok');$('openApp').disabled=false;}catch(_){$('statusTitle').textContent=t.disconnected;$('statusInfo').textContent=t.connectionHint;$('openApp').disabled=true;}}
+async function load(){const v=await chrome.storage.local.get(['enabled','useLogin','extensionLanguage']);$('enabled').checked=v.enabled!==false;$('useLogin').checked=!!v.useLogin;lang=['en','ar','fr'].includes(v.extensionLanguage)?v.extensionLanguage:'en';$('extensionLanguage').value=lang;applyLanguage();await refreshConnection();}
+$('enabled').addEventListener('change',()=>chrome.storage.local.set({enabled:$('enabled').checked}));
+$('useLogin').addEventListener('change',()=>chrome.storage.local.set({useLogin:$('useLogin').checked}));
+$('extensionLanguage').addEventListener('change',async()=>{lang=$('extensionLanguage').value;await chrome.storage.local.set({extensionLanguage:lang});applyLanguage();await refreshConnection();});
+$('recheck').addEventListener('click',refreshConnection);
+$('openApp').addEventListener('click',()=>chrome.runtime.sendMessage({type:'show-app'},r=>{if(!r?.ok){$('statusInfo').textContent=(strings[lang]||strings.en).openFailed;}}));
+load();

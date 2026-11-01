@@ -1,0 +1,64 @@
+name: Sabo DM stable release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.23.x"
+          cache: false
+
+      - name: Resolve dependencies
+        shell: pwsh
+        run: go mod tidy
+
+      - name: Run tests
+        shell: pwsh
+        run: go test ./...
+
+      - name: Install resource compiler
+        shell: pwsh
+        run: go install github.com/akavel/rsrc@latest
+
+      - name: Generate Windows resources
+        shell: pwsh
+        run: |
+          $gopath = go env GOPATH
+          & "$gopath\\bin\\rsrc.exe" -manifest Sabo-DM.manifest -o rsrc.syso
+
+      - name: Build stable Windows application
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          go build -trimpath -ldflags="-s -w -H windowsgui -X main.AppVersion=$version" -o Sabo-DM.exe .
+
+      - name: Build diagnostic application
+        shell: pwsh
+        run: go build -trimpath -tags dev -ldflags="-X main.AppVersion=${{ github.ref_name }}" -o Sabo-DM-Diagnostic.exe .
+
+      - name: Package browser extension
+        shell: pwsh
+        run: Compress-Archive -Path extension\\* -DestinationPath Sabo-DM-Extension.zip -Force
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Sabo DM ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            Sabo-DM.exe
+            Sabo-DM-Diagnostic.exe
+            Sabo-DM-Extension.zip

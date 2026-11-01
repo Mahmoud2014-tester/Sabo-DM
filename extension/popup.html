@@ -1,33 +1,41 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<style>
-  * { box-sizing: border-box; }
-  html { width: 380px; min-width: 380px; }
-  body { font: 13px/1.4 "Segoe UI", Arial, sans-serif; width: 360px; min-width: 360px; max-width: 360px; margin: 0; padding: 14px; overflow-x: hidden; overflow-y: auto; }
-  .option-row { display: flex; align-items: flex-start; gap: 8px; width: 100%; margin: 0 0 10px; line-height: 1.45; overflow-wrap: anywhere; }
-  .option-row input { flex: 0 0 auto; margin: 2px 0 0; }
-  .option-row span { display: block; flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
-  .hint { color: #555; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; word-break: normal; margin: 0 0 10px 24px; }
-  #status { margin-top: 8px; padding: 7px 0; font-weight: 600; min-height: 30px; overflow-wrap: anywhere; }
-  .language-row { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid #ddd; width:100%; }
-  .language-row label { flex: 0 0 auto; margin:0; white-space:normal; }
-  #extensionLanguage { flex:1 1 auto; min-width:0; max-width:100%; padding:5px; }
-  .ok { color: #15803d; } .off { color: #b91c1c; }
-  html[dir="rtl"] body { text-align: right; }
-  html[dir="rtl"] .option-row { flex-direction: row-reverse; }
-  html[dir="rtl"] .hint { margin: 0 24px 10px 0; }
-  html[dir="rtl"] .language-row { flex-direction: row-reverse; }
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sabo DM Browser Integration</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1220;--panel:#111c2e;--line:#26364f;--text:#edf4ff;--muted:#9fb0c8;--blue:#2878f0;--green:#28c58a;--red:#ef6262}
+    *{box-sizing:border-box}body{margin:0;width:400px;background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",Arial,sans-serif}
+    .head{display:flex;align-items:center;gap:12px;padding:15px 18px;background:#101c30;border-bottom:1px solid var(--line)}
+    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(145deg,#3188ff,#1551c5);display:grid;place-items:center;font-size:24px;font-weight:800}
+    .brand{font-size:17px;font-weight:750;letter-spacing:.2px}.sub{font-size:10px;color:var(--muted);letter-spacing:1.2px}
+    .body{padding:14px 16px 16px}.status{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line);background:var(--panel);border-radius:11px;margin-bottom:14px}
+    .dot{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 3px #ef62621c}.dot.ok{background:var(--green);box-shadow:0 0 0 3px #28c58a1c}
+    .status strong{display:block;font-size:13px}.status small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+    .primary,.secondary{border:0;border-radius:9px;min-height:38px;padding:9px 12px;font:600 12px "Segoe UI",Arial,sans-serif;cursor:pointer}
+    .primary{width:100%;background:var(--blue);color:#fff}.secondary{background:#1d2a40;color:var(--text);border:1px solid var(--line)}.primary:hover{filter:brightness(1.1)}button:disabled{opacity:.5;cursor:default}
+    .section{margin-top:12px;padding:13px;border:1px solid var(--line);border-radius:11px;background:var(--panel)}.section h3{font-size:12px;margin:0 0 12px;color:#c9d8ee;letter-spacing:.5px;text-transform:uppercase}
+    .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:9px 0}.toggle span{font-weight:600}.hint{font-size:11px;color:var(--muted);line-height:1.5;margin:5px 0 0}
+    input[type=checkbox]{accent-color:var(--blue);width:17px;height:17px}
+    .lang{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:13px}.lang select{min-width:135px;flex:1;background:#0b1424;color:var(--text);border:1px solid var(--line);padding:8px;border-radius:8px}
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:13px;color:var(--muted);font-size:10px}.link{background:none;border:0;color:#82b7ff;padding:0;cursor:pointer;font:inherit}
+    html[dir=rtl] .head,html[dir=rtl] .toggle,html[dir=rtl] .lang{flex-direction:row-reverse}html[dir=rtl] .status{text-align:right}
+  .quick{display:flex;gap:8px;margin-bottom:12px}.quick .secondary{flex:1}.section h3{margin-bottom:10px}.hint{max-width:320px}.head{box-shadow:0 5px 18px #0002}.logo{box-shadow:0 4px 12px #2878f044}.status{box-shadow:0 3px 12px #0001}.primary{box-shadow:0 4px 12px #2878f033}
 </style>
 </head>
 <body>
-  <label class="option-row"><input type="checkbox" id="enabled"> <span data-i18n="takeover">Take over browser downloads</span></label>
-  <label class="option-row"><input type="checkbox" id="useLogin"> <span data-i18n="login">Use my login for videos</span></label>
-  <div class="hint"><span data-i18n="hint">When on, your cookies for the video site (for example YouTube) are sent to the Sabo DM app on this computer, and stored there encrypted, so private, members-only and signed-in videos can download. Off by default.</span></div>
-  <div id="status">Checking...</div>
-  <div class="language-row"><label for="extensionLanguage" data-i18n="languageLabel">Extension language</label><select id="extensionLanguage" aria-label="Extension language"><option value="en">English</option><option value="ar">العربية</option><option value="fr">Français</option></select></div>
-  <div class="hint" data-i18n="languageSource">Extension language is independent from desktop language.</div>
+  <header class="head"><div class="logo">⇩</div><div><div class="brand">Sabo DM</div><div class="sub" data-i18n="sub">BROWSER INTEGRATION</div></div></header>
+  <main class="body">
+    <div class="status"><i id="dot" class="dot"></i><div><strong id="statusTitle">Checking desktop connection…</strong><small id="statusInfo">Local connection · 127.0.0.1</small></div></div>
+    <div class="quick"><button id="openApp" class="primary" data-i18n="openApp">Open Sabo DM</button></div>
+    <section class="section"><h3 data-i18n="integration">Download integration</h3>
+      <label class="toggle"><span data-i18n="takeover">Show confirmation for browser downloads</span><input id="enabled" type="checkbox"></label>
+      <p class="hint" data-i18n="takeoverHint">When enabled, supported browser downloads pause while you choose Download, Add to Queue, or Cancel.</p>
+      <label class="toggle"><span data-i18n="login">Use signed-in site cookies for media</span><input id="useLogin" type="checkbox"></label>
+      <p class="hint" data-i18n="loginHint">Only use this for sites where you are signed in. Cookies are transferred to the local desktop app for the selected media URL.</p>
+    </section>
+    <div class="lang"><label for="extensionLanguage" data-i18n="language">Extension language</label><select id="extensionLanguage"><option value="en">English</option><option value="ar">العربية</option><option value="fr">Français</option></select></div>
+    <div class="footer"><span>Sabo DM Extension 1.29.0</span><button id="recheck" class="link" data-i18n="recheck">Check connection</button></div>
+  </main>
   <script src="popup.js"></script>
-</body>
-</html>
+</body></html>

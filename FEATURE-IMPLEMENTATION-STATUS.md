@@ -68,3 +68,16 @@
 - [ ] Queue creation/editing and category management still need backend implementation.
 - [ ] Settings for download folder, startup, scheduling, and credentials are not yet exposed in this panel.
 - [ ] Must verify actual button behavior on Windows after GitHub Actions build.
+
+
+## Root-cause remediation package (v1.29.0)
+
+- [x] Updated browser extension popup styling and bumped extension version to 1.29.0.
+- [x] Refreshed confirmation window layout and compacted it to reduce unnecessary scrolling.
+- [x] Added Video / Audio output choice to the confirmation window for supported media pages.
+- [x] Passed the selected audio-only flag and output format from confirmation UI → extension service worker → loopback Go API → download queue.
+- [x] Added request timeout handling. The browser's paused download is only cancelled after the desktop app accepts the request; rejected/failed handoffs preserve or resume the browser copy.
+- [x] Added page title as a better suggested filename for media detected by the content script.
+- [x] Added a stable-tag GitHub Release workflow that publishes the Windows executable and extension ZIP required by the in-app updater.
+- [x] Added setup instructions to remove the old extension and load the new `extension` folder.
+- [ ] Windows CI build, Chrome/Edge extension runtime tests, real-site hand-off tests, and update-install test must pass before calling this release production-ready.

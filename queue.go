@@ -31,6 +31,8 @@ const (
 type Item struct {
 	URL, Dir, Name string
 	Path           string // final file, once known
+	Queue          string // user-defined queue name
+	Category       string // derived file category
 	Kind           string // kindFile (default) or kindVideo
 	VLabel         string // chosen video quality, for display
 	VArgs          []string
@@ -53,6 +55,7 @@ type Item struct {
 type Queue struct {
 	walk.TableModelBase
 	Items            []*Item
+	Queues           []string
 	MaxParallel      int
 	MaxSegments      int // maximum direct-download range workers (1..32)
 	post             func(func())
@@ -171,6 +174,71 @@ func (q *Queue) progressReporter(it *Item) (report func(done, total int64, speed
 	return report, flush
 }
 
+func categoryFor(name, kind string) string {
+	switch kind {
+	case kindVideo:
+		return "Videos"
+	case kindTorrent:
+		return "Torrents"
+	}
+	ext := strings.ToLower(filepath.Ext(name))
+	switch ext {
+	case ".mp3", ".m4a", ".aac", ".ogg", ".opus", ".wav", ".flac":
+		return "Music"
+	case ".mp4", ".mkv", ".webm", ".m4v", ".mov", ".avi":
+		return "Videos"
+	case ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".epub":
+		return "Documents"
+	default:
+		return "Files"
+	}
+}
+
+func (q *Queue) setQueueNames(names []string) {
+	clean := make([]string, 0, len(names))
+	seen := map[string]bool{}
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" || len(name) > 40 || seen[strings.ToLower(name)] {
+			continue
+		}
+		seen[strings.ToLower(name)] = true
+		clean = append(clean, name)
+	}
+	if !seen["default"] {
+		clean = append([]string{"Default"}, clean...)
+	}
+	q.Queues = clean
+	s := loadSettings()
+	s.Queues = clean
+	saveSettings(s)
+}
+
+func (q *Queue) assignQueueForURL(link, queue string) {
+	queue = strings.TrimSpace(queue)
+	if queue == "" {
+		return
+	}
+	valid := false
+	for _, name := range q.Queues {
+		if name == queue {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return
+	}
+	for _, item := range q.Items {
+		if item.URL == link {
+			item.Queue = queue
+			q.save()
+			q.notify()
+			return
+		}
+	}
+}
+
 // displayName is what the list shows: the real name once known, otherwise a clear placeholder.
 func displayName(it *Item) string {
 	if it.Name != "" {
@@ -244,7 +312,7 @@ func (q *Queue) addExtNamed(link, dir, referer, cookie, name string, start bool)
 			return
 		}
 	}
-	q.Items = append(q.Items, &Item{URL: link, Dir: dir, Name: name, Kind: kindFile, Referer: referer, Cookie: cookie, Status: stQueued})
+	q.Items = append(q.Items, &Item{URL: link, Dir: dir, Name: name, Kind: kindFile, Referer: referer, Cookie: cookie, Queue: "Default", Category: categoryFor(name, kindFile), Status: stQueued})
 	q.PublishRowsReset()
 	q.notify()
 	q.save()
@@ -280,7 +348,7 @@ func (q *Queue) addVideo(link, dir, title, label string, args []string, jar, ref
 			return
 		}
 	}
-	q.Items = append(q.Items, &Item{URL: link, Dir: dir, Name: title, Kind: kindVideo, VLabel: label, VArgs: args, Jar: jar, Referer: referer, Status: stQueued})
+	q.Items = append(q.Items, &Item{URL: link, Dir: dir, Name: title, Kind: kindVideo, VLabel: label, VArgs: args, Jar: jar, Referer: referer, Queue: "Default", Category: categoryFor(title, kindVideo), Status: stQueued})
 	q.PublishRowsReset()
 	q.notify()
 	q.save()
@@ -298,7 +366,7 @@ func (q *Queue) addTorrent(src, dir, name, sel string, start bool) {
 	if q.exists(src) {
 		return
 	}
-	q.Items = append(q.Items, &Item{URL: src, Dir: dir, Name: name, Select: sel, Kind: kindTorrent, Status: stQueued})
+	q.Items = append(q.Items, &Item{URL: src, Dir: dir, Name: name, Select: sel, Kind: kindTorrent, Queue: "Default", Category: categoryFor(name, kindTorrent), Status: stQueued})
 	q.PublishRowsReset()
 	q.notify()
 	q.save()
@@ -553,15 +621,16 @@ type Settings struct {
 	CookieBrowser string // yt-dlp --cookies-from-browser, "" = none
 	Language      string // en, ar, fr
 
-	AutoStart      bool // start with Windows (tray only)
-	AutoStartAsked bool // the first-run question was already answered
-	AutoResume     bool // resume unfinished downloads when the app starts
+	AutoStart      bool     // start with Windows (tray only)
+	AutoStartAsked bool     // the first-run question was already answered
+	AutoResume     bool     // resume unfinished downloads when the app starts
+	Queues         []string `json:"queues,omitempty"`
 }
 
 func settingsPath() string { return filepath.Join(configDir(), "settings.json") }
 
 func loadSettings() Settings {
-	s := Settings{Parallel: 3, MaxSegments: 16, Language: "en"}
+	s := Settings{Parallel: 3, MaxSegments: 16, Language: "en", Queues: []string{"Default"}}
 	if b, err := os.ReadFile(settingsPath()); err == nil {
 		json.Unmarshal(b, &s)
 	}
@@ -577,6 +646,9 @@ func loadSettings() Settings {
 	if s.LimitKB < 0 {
 		s.LimitKB = 0
 	}
+	if len(s.Queues) == 0 {
+		s.Queues = []string{"Default"}
+	}
 	return s
 }
 
@@ -588,6 +660,7 @@ func saveSettings(s Settings) {
 
 type savedItem struct {
 	URL, Dir, Name, Path string
+	Queue, Category      string
 	Kind, VLabel         string
 	VArgs                []string
 	Done                 bool
@@ -606,7 +679,7 @@ func queueDBPath() string { return filepath.Join(configDir(), "queue.db") }
 func (q *Queue) savedItems() []savedItem {
 	out := make([]savedItem, 0, len(q.Items))
 	for _, it := range q.Items {
-		si := savedItem{URL: it.URL, Dir: it.Dir, Name: it.Name, Path: it.Path, Kind: it.Kind, VLabel: it.VLabel,
+		si := savedItem{URL: it.URL, Dir: it.Dir, Name: it.Name, Path: it.Path, Queue: it.Queue, Category: it.Category, Kind: it.Kind, VLabel: it.VLabel,
 			VArgs: it.VArgs, Done: it.Status == stDone, DoneBytes: it.Done, Total: it.Total, Status: it.Status,
 			Select: it.Select, Referer: it.Referer}
 		if it.Status != stDone { // login data is only kept while unfinished, and only encrypted
@@ -726,11 +799,17 @@ func (q *Queue) load() {
 		if s.Done {
 			done = s.Total
 		}
-		it := &Item{URL: s.URL, Dir: s.Dir, Name: s.Name, Path: s.Path, Kind: s.Kind,
+		it := &Item{URL: s.URL, Dir: s.Dir, Name: s.Name, Path: s.Path, Queue: s.Queue, Category: s.Category, Kind: s.Kind,
 			VLabel: s.VLabel, VArgs: s.VArgs, Done: done, Total: s.Total, Status: status,
 			Select: s.Select, Referer: s.Referer, Cookie: openString(s.CookieEnc), Jar: openString(s.JarEnc)}
 		if it.Kind == "" {
 			it.Kind = kindFile
+		}
+		if it.Queue == "" {
+			it.Queue = "Default"
+		}
+		if it.Category == "" {
+			it.Category = categoryFor(it.Name, it.Kind)
 		}
 		q.Items = append(q.Items, it)
 	}

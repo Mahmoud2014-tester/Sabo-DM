@@ -1,23 +1,31 @@
 {
   "manifest_version": 3,
-  "name": "Sabo DM Integration",
-  "version": "1.27.0",
-  "description": "Sabo DM browser integration with opt-in social-site cookies and feed media detection.",
+  "name": "Sabo DM — Download Integration",
+  "version": "1.29.0",
+  "description": "Integrated browser download detection, confirmation, media extraction and queue control for Sabo DM.",
   "permissions": [
     "downloads",
     "contextMenus",
     "cookies",
-    "storage"
+    "storage",
+    "alarms"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "http://127.0.0.1:19345/*",
+    "http://127.0.0.1:19346/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Sabo DM"
+    "default_title": "Sabo DM",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   },
   "content_scripts": [
     {

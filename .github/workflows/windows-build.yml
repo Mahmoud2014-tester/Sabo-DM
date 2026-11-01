@@ -42,11 +42,13 @@ jobs:
 
       - name: Build GUI executable
         shell: pwsh
-        run: go build -trimpath -ldflags="-s -w -H windowsgui" -o Sabo-DM.exe .
+        run: $version = "1.29.0-dev"
+          if ("${{ github.ref_type }}" -eq "tag") { $version = "${{ github.ref_name }}" }
+          go build -trimpath -ldflags="-s -w -H windowsgui -X main.AppVersion=$version" -o Sabo-DM.exe .
 
       - name: Build diagnostic executable
         shell: pwsh
-        run: go build -trimpath -tags dev -o Sabo-DM-Diagnostic.exe .
+        run: go build -trimpath -tags dev -ldflags="-X main.AppVersion=1.29.0-dev" -o Sabo-DM-Diagnostic.exe .
 
       - name: Package browser extension
         shell: pwsh

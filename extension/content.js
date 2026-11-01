@@ -365,6 +365,7 @@
       const isDirect = !postUrl && (trustedDirect || directAudio || directVideo || directDocument);
       chrome.runtime.sendMessage({
         type:"video", url:targetUrl, referrer:location.href, direct:isDirect,
+        name:(document.title || "").replace(/\s*[-|]\s*(YouTube|Vimeo|Facebook|Instagram|X)$/i,"").trim(),
         mediaType, audioOnly:selected?.type==="audio"
       }, resp => { void chrome.runtime.lastError; done(!!(resp && resp.ok)); });
     } catch (_) { done(false); }

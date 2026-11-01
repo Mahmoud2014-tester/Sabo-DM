@@ -191,7 +191,7 @@ func main() {
 		cardUpdate                       func()
 	)
 
-	q := &Queue{MaxParallel: cfg.Parallel, MaxSegments: cfg.MaxSegments}
+	q := &Queue{MaxParallel: cfg.Parallel, MaxSegments: cfg.MaxSegments, Queues: cfg.Queues}
 	q.post = func(f func()) { mw.Synchronize(f) }
 	q.load()
 	setSpeedLimit(int64(cfg.LimitKB) * 1024)
@@ -1028,8 +1028,8 @@ func main() {
 	// ---- browser extension API ----
 
 	setAppLanguage(cfg.Language)
-	startDashboardServer(q, saveDir, func(f func()) { mw.Synchronize(f) })
-	startServer(func(r addReq) {
+	startDashboardServer(q, saveDir, func(f func()) { mw.Synchronize(f) }, func() { mw.Synchronize(func() { quitting = true; mw.Close() }) })
+	startServer(func(r addReq) error {
 		mw.Synchronize(func() {
 			switch r.Kind {
 			case "video", "audio":
@@ -1055,6 +1055,7 @@ func main() {
 				}
 			}
 		})
+		return nil
 	}, func() { mw.Synchronize(showWindow) })
 
 	// ---- start-up behaviour ----

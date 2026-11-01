@@ -73,7 +73,7 @@ func main() {
 		wv.Dispatch(func() { wv.Destroy() })
 	})
 
-	q := &Queue{MaxParallel: cfg.Parallel, MaxSegments: cfg.MaxSegments}
+	q := &Queue{MaxParallel: cfg.Parallel, MaxSegments: cfg.MaxSegments, Queues: cfg.Queues}
 	q.post = wv.Dispatch
 	q.load()
 	setSpeedLimit(int64(cfg.LimitKB) * 1024)
@@ -91,16 +91,31 @@ func main() {
 	browserSetting.Store(cfg.CookieBrowser)
 	setAppLanguage(cfg.Language)
 
-	startDashboardServer(q, saveDir, wv.Dispatch)
-	startServer(func(r addReq) {
+	startDashboardServer(q, saveDir, wv.Dispatch, func() { wv.Dispatch(func() { wv.Destroy() }) })
+	startServer(func(r addReq) error {
+		done := make(chan error, 1)
 		wv.Dispatch(func() {
+			var err error
 			switch r.Kind {
 			case "video", "audio":
-				noFF := findFFmpegDir() == ""
-				if r.Action == "queue" {
-					q.AddVideoQueuedWithReferrer(r.URL, saveDir, r.Name, "Best available", bestArgs(!noFF), netscapeJar(r.Cookies), r.Referrer)
-				} else {
-					q.AddVideoWithReferrer(r.URL, saveDir, r.Name, "Best available", bestArgs(!noFF), netscapeJar(r.Cookies), r.Referrer)
+				label := "Best available"
+				args := bestArgs(findFFmpegDir() != "")
+				if r.Kind == "audio" || r.AudioOnly {
+					format := r.AudioFormat
+					if format == "" {
+						format = "original"
+					}
+					args, err = audioFormatArgs(format)
+					label = "Audio (" + format + ")"
+				}
+				if err == nil {
+					if findTool("yt-dlp.exe") == "" {
+						err = fmt.Errorf("yt-dlp is not installed. Open Settings → Install / Update yt-dlp and retry")
+					} else if r.Action == "queue" {
+						q.AddVideoQueuedWithReferrer(r.URL, saveDir, r.Name, label, args, netscapeJar(r.Cookies), r.Referrer)
+					} else {
+						q.AddVideoWithReferrer(r.URL, saveDir, r.Name, label, args, netscapeJar(r.Cookies), r.Referrer)
+					}
 				}
 			case "torrent":
 				if r.Action == "queue" {
@@ -115,9 +130,20 @@ func main() {
 					q.AddExtNamed(r.URL, saveDir, r.Referrer, r.Cookie, r.Name)
 				}
 			}
+			if err == nil {
+				showAppWindow(hwnd, user32)
+			}
+			done <- err
 		})
+		select {
+		case err := <-done:
+			return err
+		case <-time.After(10 * time.Second):
+			return fmt.Errorf("Sabo DM did not finish accepting the browser request")
+		}
+
 	}, func() {
-		// The main WebView2 window is already the foreground application surface.
+		showAppWindow(hwnd, user32)
 	})
 
 	if cfg.AutoStart {
@@ -141,6 +167,11 @@ func main() {
 	q.CancelAll()
 	q.save()
 	q.close()
+}
+
+func showAppWindow(hwnd uintptr, user32 *syscall.LazyDLL) {
+	user32.NewProc("ShowWindow").Call(hwnd, 9) // SW_RESTORE
+	user32.NewProc("SetForegroundWindow").Call(hwnd)
 }
 
 func defaultDownloadDir() string {
