@@ -32,7 +32,7 @@ Name: "{group}\Sabo DM"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}
 Name: "{autodesktop}\Sabo DM"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Sabo DM"; ValueData: '"{app}\{#MyAppExeName}" --background'; Tasks: startup; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Sabo DM"; ValueData: """{app}\{#MyAppExeName}"" --background"; Tasks: startup; Flags: uninsdeletevalue
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch Sabo DM"; Flags: postinstall nowait skipifsilent
