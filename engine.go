@@ -151,7 +151,11 @@ func probe(ctx context.Context, link string) (fileInfo, error) {
 	if info.Name == "" {
 		info.Name = nameFromURL(link)
 	}
-	if filepath.Ext(info.Name) == "" && contentType != "" {
+	// Only infer an extension when we already have a meaningful base name.
+	// If the URL has no path (for example an httptest server root) and the
+	// server reports text/plain, mime.ExtensionsByType may return .asc. Appending
+	// that to an empty name produces "asc" and incorrectly overrides Job.Name.
+	if info.Name != "" && filepath.Ext(info.Name) == "" && contentType != "" {
 		if exts, _ := mime.ExtensionsByType(contentType); len(exts) > 0 {
 			priority := map[string]int{".pdf": 1, ".zip": 1, ".7z": 1, ".rar": 1, ".mp3": 1, ".mp4": 1, ".jpg": 1, ".jpeg": 1, ".png": 1, ".docx": 1, ".xlsx": 1, ".exe": 1}
 			sort.SliceStable(exts, func(i, j int) bool { return priority[strings.ToLower(exts[i])] > priority[strings.ToLower(exts[j])] })
