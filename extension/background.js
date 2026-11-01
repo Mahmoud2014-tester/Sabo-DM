@@ -150,7 +150,7 @@ async function openConfirm(data) {
   try {
     const win = await chrome.windows.create({
       url: chrome.runtime.getURL("confirm.html?id=" + encodeURIComponent(id)),
-      type: "popup", width: 520, height: 570, focused: true
+      type: "popup", width: 500, height: 560, focused: true
     });
     await chrome.storage.local.set({ [key]: { ...data, id, state: "awaiting", createdAt: Date.now(), windowId: win.id } });
     return id;
@@ -270,6 +270,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     await openConfirm({ source:"content", url:normalizedUrl, referrer:msg.referrer||"", name, size:0, type:msg.mediaType||"Video or audio stream", kind:msg.audioOnly && !msg.direct ? "audio" : (msg.direct ? "" : "video"), audioOnly:!!msg.audioOnly });
     sendResponse({ ok:true });
   })().catch(e => sendResponse({ ok:false, error:e.message }));
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || msg.type !== "download-progress") return;
+  (async () => {
+    const url = API + "/status?url=" + encodeURIComponent(msg.url || "");
+    const response = await fetch(url, { method: "GET", headers: { "X-Sabo-DM": "1" } });
+    if (!response.ok) throw new Error("Progress is temporarily unavailable");
+    sendResponse({ ok: true, status: await response.json() });
+  })().catch(error => sendResponse({ ok: false, error: error.message || String(error) }));
   return true;
 });
 

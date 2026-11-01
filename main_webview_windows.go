@@ -151,6 +151,28 @@ func main() {
 
 	}, func() {
 		showAppWindow(hwnd, user32)
+	}, func(url string) map[string]interface{} {
+		ch := make(chan map[string]interface{}, 1)
+		wv.Dispatch(func() {
+			for i := len(q.Items) - 1; i >= 0; i-- {
+				it := q.Items[i]
+				if it.URL == url {
+					pct := 0.0
+					if it.Total > 0 {
+						pct = float64(it.Done) * 100 / float64(it.Total)
+					}
+					ch <- map[string]interface{}{"name": displayName(it), "status": it.Status, "done": it.Done, "total": it.Total, "speed": it.Speed, "percent": pct}
+					return
+				}
+			}
+			ch <- map[string]interface{}{"name": "Download", "status": "Queued", "done": int64(0), "total": int64(0), "speed": float64(0), "percent": float64(0)}
+		})
+		select {
+		case result := <-ch:
+			return result
+		case <-time.After(2 * time.Second):
+			return map[string]interface{}{"status": "Checking", "percent": float64(0)}
+		}
 	})
 
 	if cfg.AutoStart {

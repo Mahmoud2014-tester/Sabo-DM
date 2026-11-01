@@ -47,7 +47,7 @@ type addReq struct {
 // startServer listens on 127.0.0.1 only. A web page cannot use it:
 // requests must come from a browser extension (Origin check), carry a
 // custom header (which forces a CORS preflight), and use our own Host.
-func startServer(onAdd func(addReq) error, onShow func()) {
+func startServer(onAdd func(addReq) error, onShow func(), onStatus func(string) map[string]interface{}) {
 	guard := func(w http.ResponseWriter, r *http.Request) bool {
 		if r.Host != apiAddr && r.Host != "localhost:19345" {
 			http.Error(w, "bad host", http.StatusForbidden)
@@ -103,6 +103,26 @@ func startServer(onAdd func(addReq) error, onShow func()) {
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_ = json.NewEncoder(w).Encode(map[string]string{"language": getAppLanguage()})
+	})
+	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		if !guard(w, r) {
+			return
+		}
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if onStatus == nil {
+			http.Error(w, "status unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		url := strings.TrimSpace(r.URL.Query().Get("url"))
+		if url == "" {
+			http.Error(w, "missing url", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(onStatus(url))
 	})
 	mux.HandleFunc("/show", func(w http.ResponseWriter, r *http.Request) {
 		if !guard(w, r) {

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Sabo DM — Download Integration",
-  "version": "1.3.5",
-  "description": "Integrated browser download detection, confirmation, media extraction and queue control for Sabo DM.",
+  "version": "1.3.7",
+  "description": "Sabo DM browser integration with recommended audio format selection and live download progress.",
   "permissions": [
     "downloads",
     "contextMenus",
