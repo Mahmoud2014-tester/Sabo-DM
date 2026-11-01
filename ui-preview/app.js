@@ -419,21 +419,6 @@ async function startToolJob(name, path) {
   }
 }
 
-function bindWindowControls() {
-  const call = async (name) => {
-    const fn = window[name];
-    if (typeof fn !== 'function') {
-      toast('Window-control bridge is unavailable. Rebuild with the WebView2 host.', 'error');
-      return;
-    }
-    try { await fn(); } catch (error) { toast(error.message || 'Window action failed', 'error'); }
-  };
-  $('#winMin').addEventListener('click', () => call('saboMinimize'));
-  $('#winMax').addEventListener('click', () => call('saboToggleMaximize'));
-  $('#winClose').addEventListener('click', () => {
-    if (confirm('Exit Sabo DM? Active downloads will be paused and saved.')) call('saboClose');
-  });
-}
 
 function bindEvents() {
   $('#add').addEventListener('click', addURLs);
@@ -501,7 +486,6 @@ function bindEvents() {
     try { await postAction('set-speed', { index: kb }); toast(kb === 0 ? 'Global speed limit removed' : `Global speed limit set to ${bytes(kb * 1024)}/s`); }
     catch (error) { toast(error.message, 'error'); }
   });
-  bindWindowControls();
 }
 
 async function init() {

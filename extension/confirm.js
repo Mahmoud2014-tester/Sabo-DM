@@ -14,9 +14,10 @@ async function init(){requestId=new URLSearchParams(location.search).get("id")||
 $('name').textContent=cleanFilename(pending.name,pending.url);try{$('url').textContent=new URL(pending.url).origin+new URL(pending.url).pathname;$('source').textContent=new URL(pending.referrer||pending.url).hostname}catch(_){$('url').textContent=pending.url||""}
 $('type').textContent=pending.type||t("unknown");$('size').textContent=humanBytes(pending.size);const isAudio=pending.kind==="audio"||pending.audioOnly||/^audio/i.test(pending.type||"");
 const mediaPage = pending.kind==="video" || pending.kind==="audio";
-$('mediaOutput').value=isAudio?"original":"video";
 try{capabilities=await sendMessage({type:"engine-capabilities"});}catch(_){capabilities={ffmpegReady:false};}
 if(!capabilities?.ok)capabilities={ffmpegReady:false};
+// Prefer MP3 for audio-page downloads when conversion is available; otherwise preserve source audio.
+$('mediaOutput').value=isAudio?(capabilities.ffmpegReady?'mp3':'original'):(mediaPage?'video':'original');
 for(const option of $('mediaOutput').options){
   if(option.value==="video"){option.disabled=isAudio;continue;}
   if(option.value==="original"){option.disabled=false;continue;}

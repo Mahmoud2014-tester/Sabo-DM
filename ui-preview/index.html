@@ -3,7 +3,7 @@
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="brand"><img class="brand-logo" src="sabo-logo.png" alt="Sabo DM logo"><div><b><span class="brand-sabo">Sabo</span> <span class="brand-dm">DM</span></b><small>DOWNLOAD MANAGER</small></div></div>
+    <div class="brand"><img class="brand-logo" src="sabo-logo.png" alt="Sabo DM logo" onerror="this.hidden=true"><div><b><span class="brand-sabo">Sabo</span> <span class="brand-dm">DM</span></b><small>DOWNLOAD MANAGER</small></div></div>
     <div class="navlabel">LIBRARY</div>
     <button class="nav active" data-filter="all">◉ <span>All downloads</span><i id="allCount">0</i></button>
     <button class="nav" data-filter="active">↓ <span>Active</span><i id="activeCount">0</i></button>
@@ -23,7 +23,7 @@
   <main>
     <header><div><h1>Downloads</h1><p>Manage your files, media and torrents</p></div>
       <div class="header-actions"><button class="iconbtn" id="theme" title="Toggle theme" aria-label="Toggle theme">☼</button><button class="iconbtn" id="settings" title="Settings" aria-label="Settings">⚙</button><div class="avatar" title="Sabo DM">S</div>
-        <div class="window-controls" aria-label="Window controls"><button class="windowbtn" id="winMin" title="Minimize" aria-label="Minimize">−</button><button class="windowbtn" id="winMax" title="Maximize / Restore" aria-label="Maximize / Restore">□</button><button class="windowbtn close" id="winClose" title="Close to tray" aria-label="Close to tray">×</button></div>
+        
       </div>
     </header>
     <section class="stats"><article><small>ACTIVE DOWNLOADS</small><strong id="statActive">0</strong><span>Currently transferring</span></article><article><small>QUEUED</small><strong id="statQueued">0</strong><span>Waiting for a free slot</span></article><article><small>COMPLETED</small><strong id="statDone">0</strong><span>Successfully downloaded</span></article><article><small>DOWNLOAD SPEED</small><strong id="statSpeed">0 KB/s</strong><span>Current combined throughput</span></article></section>

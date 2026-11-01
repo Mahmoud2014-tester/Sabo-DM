@@ -4,11 +4,6 @@
 .segment-mini{display:flex;gap:2px;margin-top:6px;height:4px;max-width:250px}.segment-mini i{display:block;position:relative;flex:1;min-width:2px;background:#29384e;border-radius:3px;overflow:hidden}.segment-mini i b{display:block;height:100%;background:#16c784;border-radius:3px}.light .segment-mini i{background:#d8e2ef}
 
 
-/* Native desktop window controls hosted inside the WebView2 dashboard. */
-.window-controls{display:flex;align-items:center;gap:4px;margin-left:10px;padding-left:10px;border-left:1px solid var(--line)}
-.windowbtn{width:34px;height:32px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--text);font-size:19px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
-.windowbtn:hover{background:var(--surface-hover)}
-.windowbtn.close:hover{background:#dc3545;border-color:#dc3545;color:white}
 .modal{position:fixed;inset:0;z-index:1000;background:#07101dcc;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal.hidden{display:none}
 .modal-card{width:min(440px,100%);background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 24px 80px #0008}
@@ -18,7 +13,6 @@
 .setting-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:22px 0}
 .setting-row select{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px}
 .modal-actions{display:flex;justify-content:flex-end}
-@media(max-width:760px){.window-controls{gap:2px;margin-left:4px;padding-left:4px}.windowbtn{width:29px;height:29px}}
 
 
 /* v1.3.1 visual cleanup: consistent surfaces, spacing and readable controls. */
@@ -85,7 +79,7 @@ body{background:radial-gradient(ellipse at 80% 0%,#241015 0%,#08090d 48%);color:
 .nav{color:#b7b7c0}
 .nav.active{background:linear-gradient(100deg,#8e0710,#d90d19);color:#fff}
 .nav.active i{color:#fff}
-.nav:hover,.iconbtn:hover,.smallbtn:hover,.windowbtn:hover{border-color:#a8202b;color:#fff}
+.nav:hover,.iconbtn:hover,.smallbtn:hover{border-color:#a8202b;color:#fff}
 .navlabel{color:#777780}
 .stats article,.addpanel,.download-list,.detail{background:linear-gradient(145deg,#15161b,#101115);border-color:#303139;box-shadow:0 5px 18px #0004}
 .stats small{color:#aaaab3}
@@ -105,10 +99,8 @@ body{background:radial-gradient(ellipse at 80% 0%,#241015 0%,#08090d 48%);color:
 .status{color:#ff626a}
 .status.done{color:#22c88a}
 .status.queued{color:#f0b54a}
-.actions button,.iconbtn,.windowbtn{background:#191a20;border-color:#3b3c45;color:#e0e0e5}
+.actions button,.iconbtn{background:#191a20;border-color:#3b3c45;color:#e0e0e5}
 .avatar{background:#8f0c17;color:#fff}
-.windowbtn.close{background:#a60b16;border-color:#cf1723;color:#fff}
-.windowbtn.close:hover{background:#e20e1d}
 .detail,.settings-modal,.modal{background:#121318;border-color:#383941}
 button,select{accent-color:#ed101b}
 .sidebar-bottom{border-color:#292a30;color:#b8b8c0}
@@ -156,3 +148,6 @@ main{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behav
  .listhead,.download-row{grid-template-columns:minmax(110px,2fr) 60px minmax(80px,1fr) 70px}
  .listhead>:nth-child(5),.download-row>:nth-child(5){display:none}
 }
+/* Close buttons inside modal dialogs are dialog controls, not desktop window controls. */
+.modal-head .windowbtn{width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font-size:19px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.modal-head .windowbtn:hover{background:var(--surface-hover)}

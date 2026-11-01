@@ -43,7 +43,7 @@ jobs:
       - name: Build GUI executable
         shell: pwsh
         run: |
-          $version = "1.3.4-dev"
+          $version = "1.3.5-dev"
           if ("${{ github.ref_type }}" -eq "tag") {
             $version = "${{ github.ref_name }}"
           }
@@ -52,7 +52,7 @@ jobs:
       - name: Build diagnostic executable
         shell: pwsh
         run: |
-          $version = "1.3.4-dev"
+          $version = "1.3.5-dev"
           if ("${{ github.ref_type }}" -eq "tag") { $version = "${{ github.ref_name }}" }
           go build -trimpath -tags dev -ldflags="-X main.AppVersion=$version" -o Sabo-DM-Diagnostic.exe .
 
