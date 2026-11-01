@@ -4,6 +4,7 @@
 .segment-mini{display:flex;gap:2px;margin-top:6px;height:4px;max-width:250px}.segment-mini i{display:block;position:relative;flex:1;min-width:2px;background:#29384e;border-radius:3px;overflow:hidden}.segment-mini i b{display:block;height:100%;background:#16c784;border-radius:3px}.light .segment-mini i{background:#d8e2ef}
 
 
+/* Native desktop window controls hosted inside the WebView2 dashboard. */
 .modal{position:fixed;inset:0;z-index:1000;background:#07101dcc;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal.hidden{display:none}
 .modal-card{width:min(440px,100%);background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 24px 80px #0008}
@@ -13,6 +14,7 @@
 .setting-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:22px 0}
 .setting-row select{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px}
 .modal-actions{display:flex;justify-content:flex-end}
+
 
 
 /* v1.3.1 visual cleanup: consistent surfaces, spacing and readable controls. */
@@ -148,6 +150,11 @@ main{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behav
  .listhead,.download-row{grid-template-columns:minmax(110px,2fr) 60px minmax(80px,1fr) 70px}
  .listhead>:nth-child(5),.download-row>:nth-child(5){display:none}
 }
-/* Close buttons inside modal dialogs are dialog controls, not desktop window controls. */
-.modal-head .windowbtn{width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font-size:19px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:none}
-.modal-head .windowbtn:hover{background:var(--surface-hover)}
+
+/* v1.3.5 fixes: embedded brand mark and compact IDM-style start notification. */
+.download-notice{position:fixed;z-index:1200;right:24px;bottom:24px;width:min(390px,calc(100vw - 32px));display:flex;align-items:center;gap:12px;padding:13px 14px;background:linear-gradient(135deg,#1b1115,#101115);border:1px solid #9e1b27;border-radius:14px;box-shadow:0 18px 55px #000b;opacity:0;transform:translateY(16px) scale(.98);pointer-events:none;transition:opacity .2s,transform .2s}
+.download-notice.show{opacity:1;transform:none;pointer-events:auto}
+.download-notice>img{width:42px;height:42px;object-fit:contain;flex:none;border-radius:50%;background:#08090c}
+.notice-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.notice-copy strong{font-size:13px;color:#fff}.notice-copy span{font-size:12px;color:#ff555f}.notice-copy small{font-size:11px;color:#b5b5bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.download-notice button{width:26px;height:26px;border:1px solid #414149;border-radius:7px;background:#24242b;color:#eee;cursor:pointer}
+.brand-logo{display:block;flex:none;background:#08090c;border-radius:50%;object-fit:contain;image-rendering:auto}

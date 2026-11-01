@@ -34,7 +34,7 @@ func main() {
 		saveDir = defaultDownloadDir()
 	}
 	if cfg.Parallel < 1 || cfg.Parallel > 8 {
-		cfg.Parallel = 3
+		cfg.Parallel = 5
 	}
 	if cfg.MaxSegments < 1 || cfg.MaxSegments > 32 {
 		cfg.MaxSegments = 16

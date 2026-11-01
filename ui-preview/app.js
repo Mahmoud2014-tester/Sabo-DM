@@ -5,6 +5,8 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 let downloads = [];
+let seenDownloadURLs = null;
+let noticeTimer = null;
 let meta = { queues: ['Default'], categories: ['Files', 'Videos', 'Music', 'Documents', 'Torrents'], version: '—' };
 let filter = 'all';
 let queueFilter = 'all';
@@ -96,6 +98,16 @@ function toast(message, kind = 'ok') {
   el.classList.add('show');
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+function showDownloadNotice(item) {
+  const panel = $('#downloadNotice');
+  if (!panel) return;
+  $('#downloadNoticeName').textContent = String(item.name || 'Preparing download');
+  $('#downloadNoticeText').textContent = (item.status === 'Queued' || item.status === 'queued') ? 'Added to download queue' : 'Download started';
+  panel.classList.add('show');
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => panel.classList.remove('show'), 6500);
 }
 
 function escapeHTML(value) {
@@ -251,7 +263,13 @@ function render() { renderQueues(); renderRows(); renderStats(); renderDetails()
 async function refresh() {
   try {
     const [items, info] = await Promise.all([request('/downloads'), request('/meta')]);
-    downloads = Array.isArray(items) ? items : [];
+    const nextDownloads = Array.isArray(items) ? items : [];
+    if (seenDownloadURLs !== null) {
+      const fresh = nextDownloads.filter(item => item.url && !seenDownloadURLs.has(item.url));
+      if (fresh.length) showDownloadNotice(fresh[0]);
+    }
+    seenDownloadURLs = new Set(nextDownloads.map(item => item.url).filter(Boolean));
+    downloads = nextDownloads;
     meta = { ...meta, ...(info || {}) };
     $('#engineStatus').textContent = 'Connected to Sabo DM';
     $('#engineReady').textContent = 'Connected';
@@ -419,8 +437,8 @@ async function startToolJob(name, path) {
   }
 }
 
-
 function bindEvents() {
+  $('#downloadNoticeClose')?.addEventListener('click', () => $('#downloadNotice').classList.remove('show'));
   $('#add').addEventListener('click', addURLs);
   $('#url').addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') addURLs(); });
   $('#search').addEventListener('input', renderRows);

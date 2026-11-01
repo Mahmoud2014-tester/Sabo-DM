@@ -150,7 +150,7 @@ async function openConfirm(data) {
   try {
     const win = await chrome.windows.create({
       url: chrome.runtime.getURL("confirm.html?id=" + encodeURIComponent(id)),
-      type: "popup", width: 560, height: 620, focused: true
+      type: "popup", width: 520, height: 570, focused: true
     });
     await chrome.storage.local.set({ [key]: { ...data, id, state: "awaiting", createdAt: Date.now(), windowId: win.id } });
     return id;

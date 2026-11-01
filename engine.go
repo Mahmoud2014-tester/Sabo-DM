@@ -174,6 +174,24 @@ func probe(ctx context.Context, link string) (fileInfo, error) {
 	return info, nil
 }
 
+func isOpaqueFilename(name string) bool {
+	base := strings.TrimSpace(filepath.Base(name))
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	if len(base) < 20 {
+		return false
+	}
+	compact := strings.ReplaceAll(strings.ReplaceAll(base, "-", ""), "_", "")
+	if len(compact) < 20 {
+		return false
+	}
+	for _, r := range compact {
+		if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'f' || r >= 'A' && r <= 'F') {
+			return false
+		}
+	}
+	return true
+}
+
 func (j *Job) prepare(ctx context.Context) (*State, error) {
 	direct, resolvedName, err := Resolve(ctx, j.URL)
 	if err != nil {
@@ -184,15 +202,21 @@ func (j *Job) prepare(ctx context.Context) (*State, error) {
 		return nil, err
 	}
 	if j.Out == "" {
-		name := j.Name
+		// The server's Content-Disposition filename is authoritative. Browser
+		// download APIs sometimes expose opaque storage IDs as filenames; use
+		// that browser hint only when the server provides no real filename.
+		name := info.Name
 		if name == "" {
 			name = resolvedName
 		}
-		if name == "" {
-			name = info.Name
+		if name == "" && !isOpaqueFilename(j.Name) {
+			name = j.Name
 		}
 		if name == "" {
 			name = nameFromURL(direct)
+		}
+		if name == "" {
+			name = "download.bin"
 		}
 		j.Out = filepath.Join(j.Dir, sanitizeName(name))
 	}

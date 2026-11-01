@@ -630,12 +630,12 @@ type Settings struct {
 func settingsPath() string { return filepath.Join(configDir(), "settings.json") }
 
 func loadSettings() Settings {
-	s := Settings{Parallel: 3, MaxSegments: 16, Language: "en", AutoStart: true, Queues: []string{"Default"}}
+	s := Settings{Parallel: 5, MaxSegments: 16, Language: "en", AutoStart: true, Queues: []string{"Default"}}
 	if b, err := os.ReadFile(settingsPath()); err == nil {
 		json.Unmarshal(b, &s)
 	}
 	if s.Parallel < 1 || s.Parallel > 8 {
-		s.Parallel = 3
+		s.Parallel = 5
 	}
 	if s.MaxSegments < 1 || s.MaxSegments > 32 {
 		s.MaxSegments = 16

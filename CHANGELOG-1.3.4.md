@@ -13,9 +13,3 @@
 ## Packaging
 - Updated development version to 1.3.4-dev and extension version to 1.3.4.
 - Updated installer product version to 1.3.4.
-
-
-### Follow-up fixes
-- Fixed the dashboard logo by including the branding PNG in the embedded WebView2 UI assets.
-- Removed duplicate in-dashboard minimize, maximize, and close controls; use the native Windows title bar controls.
-- Audio-page confirmation now defaults to MP3 when FFmpeg is available and keeps the output selector enabled for supported media pages, allowing the user to choose the target format instead of silently keeping M4A.
