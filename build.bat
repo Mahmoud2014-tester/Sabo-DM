@@ -11,7 +11,7 @@ echo.
 where go >nul 2>nul
 if errorlevel 1 (
   echo ERROR: Go is not installed or is not on PATH.
-  echo Install Go 1.21 or newer from https://go.dev/dl/
+  echo Install Go 1.23 or newer from https://go.dev/dl/
   echo Then close and reopen this window and run build.bat again.
   goto :fail
 )

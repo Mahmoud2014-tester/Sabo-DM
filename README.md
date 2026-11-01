@@ -4,7 +4,7 @@ Sabo DM is an independent Windows download-manager project based on the user's e
 
 ## What's included
 
-- `*.go` — Go/Walk Windows desktop application, download engine, local dashboard API, and SQLite queue persistence.
+- `*.go` — Go download engine, WebView2 desktop host, local dashboard API, and SQLite queue persistence.
 - `extension/` — Chromium browser extension source.
 - `ui-preview/` — dashboard HTML/CSS/JavaScript served by the application through its embedded filesystem.
 - `persistence.go` — transactional SQLite queue store with legacy JSON import and JSON fallback.
@@ -23,17 +23,13 @@ The direct-download segment setting is in the desktop Settings panel under “Ma
 
 The download queue is now persisted in SQLite with transactional snapshots, WAL journaling, full synchronous writes, startup integrity checking, legacy `queue.json` import, and a JSON compatibility fallback. Active direct-file downloads also retain their existing `.gdm` segment maps and partial data for resume. See `FEATURE-IMPLEMENTATION-STATUS.md` for limitations and unverified work.
 
-## Open the connected dashboard
+## Main desktop dashboard
 
-After starting Sabo DM, open:
-
-`http://127.0.0.1:19346/dashboard/`
-
-The dashboard reads the live queue and supports adding HTTP/HTTPS/magnet URLs, starting/resuming, pausing, removing, searching, filtering, and switching themes. The API binds to `127.0.0.1` only and is not intended to be exposed to a LAN or the public internet.
+The normal `Sabo-DM.exe` opens the modern dashboard directly inside its native WebView2 window. The same local dashboard is also served at `http://127.0.0.1:19346/dashboard/` for troubleshooting. It reads the live queue and supports adding HTTP/HTTPS/magnet URLs, starting/resuming, pausing, removing, searching, filtering, and switching themes. The API binds to `127.0.0.1` only and is not intended to be exposed to a LAN or the public internet.
 
 ## Build on Windows
 
-Requirements: Go 1.21+ and a Windows machine. Run:
+Requirements: Go 1.23+, a Windows machine, and the Microsoft Edge WebView2 Runtime. Run:
 
 ```bat
 build.bat
@@ -51,3 +47,15 @@ The script creates `Sabo-DM.exe` and `Sabo-DM-Diagnostic.exe` when dependencies 
 ## Scope and third-party terms
 
 The DLMan screenshot and feature list are used as product/design requirements only. DLMan source code, branding assets and its license file are not included. Third-party dependencies and bundled tools remain subject to their respective terms. This repository does not claim that every requested roadmap feature is already implemented.
+
+
+## Desktop interface architecture (WebView2)
+
+The default Windows executable now starts the Sabo DM dashboard as its **main desktop window** using Microsoft Edge WebView2. The previous Win/Walk interface is retained only as an opt-in legacy build (`-tags legacyui`) and is not used by the normal Windows build.
+
+- Go remains responsible for the download queue, HTTP transfer engine, persistence, video/torrent integrations, and browser-extension bridge.
+- WebView2 hosts the local dashboard at `http://127.0.0.1:19346/dashboard/` inside the native Sabo DM window.
+- The dashboard communicates with the Go engine through the loopback-only API.
+- The Microsoft Edge WebView2 Runtime must be installed on the Windows machine. Windows 11 and most updated Windows 10 installations already include the Evergreen runtime; otherwise install the official runtime: https://developer.microsoft.com/microsoft-edge/webview2/
+
+The default build uses `main_webview_windows.go`. The legacy native UI can be built explicitly with `go build -tags legacyui` (not recommended for normal use).

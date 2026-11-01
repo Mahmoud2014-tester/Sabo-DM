@@ -1,3 +1,5 @@
+//go:build legacyui
+
 package main
 
 import (
@@ -92,16 +94,6 @@ func applyLiveLanguage(mw *walk.MainWindow, tv *walk.TableView, lang string) {
 
 //go:embed tray.png
 var trayPNG []byte
-
-func humanBytes(n float64) string {
-	units := []string{"B", "KB", "MB", "GB", "TB"}
-	i := 0
-	for n >= 1024 && i < len(units)-1 {
-		n /= 1024
-		i++
-	}
-	return fmt.Sprintf("%.1f %s", n, units[i])
-}
 
 func defaultDir() string {
 	if home, err := os.UserHomeDir(); err == nil {

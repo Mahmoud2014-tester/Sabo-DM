@@ -43,3 +43,15 @@
 - Dashboard JavaScript syntax validation passed with Node.js.
 - The full `go test ./...` run is blocked here because the SQLite Go module is not cached and outbound DNS/network access is blocked. The Windows CI workflow will resolve dependencies and run the complete test suite.
 - A complete Windows build and end-to-end download test have **not** been performed here. The CI run is required to confirm dependency resolution and compilation.
+
+
+## Desktop shell correction — WebView2
+
+- [x] Added a Windows WebView2 desktop entry point as the default application `main` (source change; pending Windows CI confirmation).
+- [x] Configured a centered 1440×900 Sabo DM window.
+- [x] Embedded the existing modern dashboard inside the native desktop window (not a separate browser tab).
+- [x] Connected the WebView2 UI dispatcher to the Go queue's UI-thread callback mechanism.
+- [x] Kept the Go download queue, transfer engine, SQLite persistence, video/torrent helpers, and browser extension API.
+- [x] Retained the previous Win/Walk entry point only behind the `legacyui` build tag.
+- [ ] Windows compile and runtime launch verification still required on GitHub Actions / a Windows machine.
+- [ ] Full feature completion remains separate: queue/category editing, speed caps at per-item/per-queue scope, scheduler, post-download actions, and credential manager still need implementation and tests.
