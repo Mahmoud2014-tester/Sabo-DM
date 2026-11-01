@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  html { width: 380px; min-width: 380px; }
+  body { font: 13px/1.4 "Segoe UI", Arial, sans-serif; width: 360px; min-width: 360px; max-width: 360px; margin: 0; padding: 14px; overflow-x: hidden; overflow-y: auto; }
+  .option-row { display: flex; align-items: flex-start; gap: 8px; width: 100%; margin: 0 0 10px; line-height: 1.45; overflow-wrap: anywhere; }
+  .option-row input { flex: 0 0 auto; margin: 2px 0 0; }
+  .option-row span { display: block; flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+  .hint { color: #555; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; word-break: normal; margin: 0 0 10px 24px; }
+  #status { margin-top: 8px; padding: 7px 0; font-weight: 600; min-height: 30px; overflow-wrap: anywhere; }
+  .language-row { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid #ddd; width:100%; }
+  .language-row label { flex: 0 0 auto; margin:0; white-space:normal; }
+  #extensionLanguage { flex:1 1 auto; min-width:0; max-width:100%; padding:5px; }
+  .ok { color: #15803d; } .off { color: #b91c1c; }
+  html[dir="rtl"] body { text-align: right; }
+  html[dir="rtl"] .option-row { flex-direction: row-reverse; }
+  html[dir="rtl"] .hint { margin: 0 24px 10px 0; }
+  html[dir="rtl"] .language-row { flex-direction: row-reverse; }
+</style>
+</head>
+<body>
+  <label class="option-row"><input type="checkbox" id="enabled"> <span data-i18n="takeover">Take over browser downloads</span></label>
+  <label class="option-row"><input type="checkbox" id="useLogin"> <span data-i18n="login">Use my login for videos</span></label>
+  <div class="hint"><span data-i18n="hint">When on, your cookies for the video site (for example YouTube) are sent to the Sabo DM app on this computer, and stored there encrypted, so private, members-only and signed-in videos can download. Off by default.</span></div>
+  <div id="status">Checking...</div>
+  <div class="language-row"><label for="extensionLanguage" data-i18n="languageLabel">Extension language</label><select id="extensionLanguage" aria-label="Extension language"><option value="en">English</option><option value="ar">العربية</option><option value="fr">Français</option></select></div>
+  <div class="hint" data-i18n="languageSource">Extension language is independent from desktop language.</div>
+  <script src="popup.js"></script>
+</body>
+</html>

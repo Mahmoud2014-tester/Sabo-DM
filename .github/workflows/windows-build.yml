@@ -1,0 +1,63 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    tags: [ "v*" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache: true
+
+      - name: Resolve dependencies
+        shell: pwsh
+        run: go mod tidy
+
+      - name: Run Go tests
+        shell: pwsh
+        run: go test ./...
+
+      - name: Install Windows resource compiler
+        shell: pwsh
+        run: go install github.com/akavel/rsrc@latest
+
+      - name: Generate Windows resources
+        shell: pwsh
+        run: |
+          $gopath = go env GOPATH
+          & "$gopath\bin\rsrc.exe" -manifest Sabo-DM.manifest -o rsrc.syso
+
+      - name: Build GUI executable
+        shell: pwsh
+        run: go build -trimpath -ldflags="-s -w -H windowsgui" -o Sabo-DM.exe .
+
+      - name: Build diagnostic executable
+        shell: pwsh
+        run: go build -trimpath -tags dev -o Sabo-DM-Diagnostic.exe .
+
+      - name: Package browser extension
+        shell: pwsh
+        run: Compress-Archive -Path extension\* -DestinationPath Sabo-DM-Extension.zip -Force
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sabo-DM-Windows-${{ github.sha }}
+          path: |
+            Sabo-DM.exe
+            Sabo-DM-Diagnostic.exe
+            Sabo-DM-Extension.zip
+          if-no-files-found: error

@@ -1,0 +1,49 @@
+SABO DM — INDEPENDENT FEATURE ROADMAP
+
+These capabilities are design targets based on common download-manager needs
+and the supplied reference screenshot. Implement them independently in Sabo DM;
+do not copy DLMan source code or assets.
+
+Reliability
+- [Implemented] SQLite queue metadata with transactional snapshots, WAL, FULL
+  synchronous writes, startup integrity checking and legacy JSON import.
+- [Implemented for direct HTTP downloads] Atomic .gdm segment-map checkpoints
+  and partial-file flushes; unfinished queue entries restore as Paused.
+- [Remaining] Stronger retry policy with bounded exponential backoff and
+  per-host failure handling for every download type.
+
+Performance
+- [Implemented] Adaptive HTTP byte-range transfers with a configurable 1–32
+  segment maximum (default 16); segment count adapts to file size.
+- [Implemented] Single-stream fallback when byte ranges are unsupported or
+  when the file is smaller than 1 MiB.
+- [Implemented] Validation of saved segment maps before reusing them on resume.
+- [Implemented] Live per-segment progress snapshots and mini progress bars in the connected dashboard.
+- [Remaining] Per-job and per-queue token-bucket speed limits.
+- [Remaining] Real-time aggregate and per-download bandwidth statistics.
+
+Organization and automation
+- [Remaining] Prioritized queues and maximum active jobs per queue.
+- [Remaining] Categories with independent destination directories.
+- [Remaining] Queue schedules with weekday selection.
+- [Remaining] Automatic next-job start and configurable completion actions.
+
+Authentication
+- [Existing] Browser cookie data is protected with Windows DPAPI before it is
+  saved in the queue; raw cookies are not written in plaintext.
+- [Remaining] Per-domain credential profiles and HTTP Basic Auth support.
+- [Remaining] Explicit 401/403 detection and user-controlled retry prompts.
+
+Integration
+- [Existing] Sabo DM browser bridge and dashboard APIs bind to loopback only.
+- [Remaining] Optional CLI using the same core download engine.
+- [Remaining] Firefox extension and cross-platform browser integration.
+
+Quality gates
+- [Added] SQLite persistence round-trip and clear-snapshot test.
+- [Added] Tests for adaptive range planning, exact segment coverage, resume-map validation, parallel HTTP ranges and single-stream fallback; the isolated engine suite also passed Go race detection.
+- [Remaining] Tests for filename sanitization and queue logic.
+- [Remaining] Integration tests against local HTTP servers with and without
+  range support.
+- [Remaining] Windows end-to-end tests for pause/resume, restart recovery,
+  browser capture, yt-dlp, FFmpeg, aria2 and language switching.
