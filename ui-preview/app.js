@@ -16,6 +16,66 @@ let lastError = '';
 let updateInfo = null;
 let toolPoll = null;
 
+const I18N = {
+  ar: {
+    "Downloads":"التنزيلات","Manage your files, media and torrents":"إدارة ملفاتك ووسائطك والتورنت",
+    "LIBRARY":"المكتبة","All downloads":"كل التنزيلات","Active":"النشطة","Queued":"قيد الانتظار","Completed":"مكتملة","Failed":"فاشلة",
+    "QUEUES":"قوائم الانتظار","CATEGORIES":"التصنيفات","All categories":"كل التصنيفات","Music":"الموسيقى","Videos":"الفيديوهات","Documents":"المستندات","Torrents":"التورنت",
+    "ACTIVE DOWNLOADS":"التنزيلات النشطة","Currently transferring":"جارٍ النقل","Waiting for a free slot":"في انتظار دورها","Successfully downloaded":"تم تنزيلها بنجاح","DOWNLOAD SPEED":"سرعة التنزيل","Current combined throughput":"السرعة الإجمالية الحالية",
+    "Add new download":"إضافة تنزيل جديد","Paste a URL, magnet link, or batch of links":"أدخل رابطًا أو رابط Magnet أو عدة روابط","＋ NEW TASK":"＋ مهمة جديدة","＋ Add download":"＋ إضافة تنزيل",
+    "Media output":"صيغة الوسائط","Video (best available)":"فيديو (أفضل جودة متاحة)","Audio · MP3":"صوت · MP3","Audio · M4A":"صوت · M4A","Audio · AAC":"صوت · AAC","Audio · Opus":"صوت · Opus","Audio · WAV":"صوت · WAV","Audio · FLAC":"صوت · FLAC","Audio · Original format":"صوت · الصيغة الأصلية",
+    "Audio output selection applies to supported video/media page URLs. Conversion requires FFmpeg.":"اختيار صيغة الصوت يعمل مع صفحات الفيديو والوسائط المدعومة. التحويل يتطلب FFmpeg.",
+    "↳ Supports HTTP / HTTPS / magnet links":"↳ يدعم روابط HTTP وHTTPS وMagnet","Save to:":"الحفظ في:",
+    "Date added ↓":"تاريخ الإضافة ↓","Name A–Z":"الاسم أ–ي","Clear filters":"مسح عوامل التصفية","Ⅱ Pause all":"Ⅱ إيقاف الكل مؤقتًا","Clear finished":"مسح المكتمل",
+    "FILE NAME":"اسم الملف","SIZE":"الحجم","PROGRESS":"التقدم","STATUS":"الحالة","ACTIONS":"الإجراءات",
+    "Download details":"تفاصيل التنزيل","Select a download to see its live transfer details":"اختر تنزيلًا لعرض تفاصيل النقل المباشرة","ENGINE SYNC":"مزامنة المحرك","Transfers":"عمليات النقل","Progress":"التقدم","Engine":"المحرك","Connected":"متصل","Parallel downloads":"التنزيلات المتوازية","Speed limit":"حد السرعة","Unlimited":"بلا حدود",
+    "Sabo DM Settings":"إعدادات Sabo DM","Application tools, updates and appearance":"أدوات التطبيق والتحديثات والمظهر","Appearance":"المظهر","Theme":"السمة","Dark":"داكن","Light":"فاتح","Language":"اللغة","English (Primary)":"الإنجليزية (أساسية)","العربية":"العربية","Français":"الفرنسية",
+    "Media tools":"أدوات الوسائط","Checking… — required for MP3, AAC, Opus, WAV and FLAC conversion.":"جارٍ التحقق… مطلوبة للتحويل إلى MP3 وAAC وOpus وWAV وFLAC.","Install FFmpeg":"تثبيت FFmpeg","yt-dlp":"yt-dlp","Install / Update":"تثبيت / تحديث",
+    "Software update":"تحديث البرنامج","Update Version":"تحديث الإصدار","Check GitHub for the latest stable release.":"تحقق من GitHub لمعرفة أحدث إصدار مستقر.","Check for updates":"التحقق من وجود تحديثات","Download and install update":"تنزيل التحديث وتثبيته","View release notes on GitHub ↗":"عرض ملاحظات الإصدار على GitHub ↗","Done":"تم",
+    "Local desktop engine":"محرك سطح المكتب المحلي","All download commands are handled by the Go engine":"يتولى محرك Go جميع أوامر التنزيل","Create download queue":"إنشاء قائمة تنزيل","Give this queue a name. You can assign downloads to it from the dashboard.":"أدخل اسم القائمة. يمكنك إسناد التنزيلات إليها من لوحة التحكم.","Queue name":"اسم القائمة","Cancel":"إلغاء","Create queue":"إنشاء قائمة"
+  },
+  fr: {
+    "Downloads":"Téléchargements","Manage your files, media and torrents":"Gérez vos fichiers, médias et torrents","LIBRARY":"BIBLIOTHÈQUE","All downloads":"Tous les téléchargements","Active":"Actifs","Queued":"En attente","Completed":"Terminés","Failed":"Échoués",
+    "QUEUES":"FILES D’ATTENTE","CATEGORIES":"CATÉGORIES","All categories":"Toutes les catégories","Music":"Musique","Videos":"Vidéos","Documents":"Documents","Torrents":"Torrents",
+    "ACTIVE DOWNLOADS":"TÉLÉCHARGEMENTS ACTIFS","Currently transferring":"Transfert en cours","Waiting for a free slot":"En attente d’un emplacement","Successfully downloaded":"Téléchargés avec succès","DOWNLOAD SPEED":"VITESSE DE TÉLÉCHARGEMENT","Current combined throughput":"Débit total actuel",
+    "Add new download":"Ajouter un téléchargement","Paste a URL, magnet link, or batch of links":"Collez une URL, un lien magnet ou plusieurs liens","＋ NEW TASK":"＋ NOUVELLE TÂCHE","＋ Add download":"＋ Ajouter",
+    "Media output":"Format média","Video (best available)":"Vidéo (meilleure qualité)","Audio · MP3":"Audio · MP3","Audio · M4A":"Audio · M4A","Audio · AAC":"Audio · AAC","Audio · Opus":"Audio · Opus","Audio · WAV":"Audio · WAV","Audio · FLAC":"Audio · FLAC","Audio · Original format":"Audio · Format original",
+    "Audio output selection applies to supported video/media page URLs. Conversion requires FFmpeg.":"Le format audio s’applique aux pages vidéo/média compatibles. La conversion nécessite FFmpeg.",
+    "↳ Supports HTTP / HTTPS / magnet links":"↳ Liens HTTP / HTTPS / magnet acceptés","Save to:":"Enregistrer dans :",
+    "Date added ↓":"Date d’ajout ↓","Name A–Z":"Nom A–Z","Clear filters":"Effacer les filtres","Ⅱ Pause all":"Ⅱ Tout suspendre","Clear finished":"Effacer les terminés",
+    "FILE NAME":"NOM DU FICHIER","SIZE":"TAILLE","PROGRESS":"PROGRESSION","STATUS":"ÉTAT","ACTIONS":"ACTIONS",
+    "Download details":"Détails du téléchargement","Select a download to see its live transfer details":"Sélectionnez un téléchargement pour voir son transfert","ENGINE SYNC":"SYNCHRONISATION","Transfers":"Transferts","Progress":"Progression","Engine":"Moteur","Connected":"Connecté","Parallel downloads":"Téléchargements parallèles","Speed limit":"Limite de vitesse","Unlimited":"Illimitée",
+    "Sabo DM Settings":"Paramètres Sabo DM","Application tools, updates and appearance":"Outils, mises à jour et apparence","Appearance":"Apparence","Theme":"Thème","Dark":"Sombre","Light":"Clair","Language":"Langue","English (Primary)":"Anglais (principal)","العربية":"Arabe","Français":"Français",
+    "Media tools":"Outils multimédias","Checking… — required for MP3, AAC, Opus, WAV and FLAC conversion.":"Vérification… requis pour convertir en MP3, AAC, Opus, WAV et FLAC.","Install FFmpeg":"Installer FFmpeg","yt-dlp":"yt-dlp","Install / Update":"Installer / Mettre à jour",
+    "Software update":"Mise à jour du logiciel","Update Version":"Mettre à jour la version","Check GitHub for the latest stable release.":"Rechercher la dernière version stable sur GitHub.","Check for updates":"Rechercher des mises à jour","Download and install update":"Télécharger et installer","View release notes on GitHub ↗":"Voir les notes de version sur GitHub ↗","Done":"Terminé",
+    "Local desktop engine":"Moteur local","All download commands are handled by the Go engine":"Toutes les commandes sont gérées par le moteur Go","Create download queue":"Créer une file d’attente","Give this queue a name. You can assign downloads to it from the dashboard.":"Nommez cette file. Vous pourrez y affecter des téléchargements.","Queue name":"Nom de la file","Cancel":"Annuler","Create queue":"Créer"
+  }
+};
+const originalTextNodes = new WeakMap();
+function applyLanguage(language) {
+  const lang = ['ar','fr'].includes(language) ? language : 'en';
+  const dict = I18N[lang] || {};
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (!originalTextNodes.has(node)) originalTextNodes.set(node, node.nodeValue);
+    const raw = originalTextNodes.get(node);
+    const key = raw.trim();
+    node.nodeValue = dict[key] ? raw.replace(key, dict[key]) : raw;
+  }
+  const attrs = {
+    '#url': {placeholder: {'https://example.com/file.zip  (one URL per line)': {'ar':'https://example.com/file.zip (رابط واحد في كل سطر)','fr':'https://example.com/file.zip (une URL par ligne)'}}},
+    '#search': {placeholder: {'⌕  Search downloads…': {'ar':'⌕  ابحث في التنزيلات…','fr':'⌕  Rechercher…'}}},
+    '#queueName': {placeholder: {'For example: Work files': {'ar':'مثال: ملفات العمل','fr':'Ex. : fichiers professionnels'}}}
+  };
+  Object.entries(attrs).forEach(([selector, props]) => Object.entries(props).forEach(([attr, values]) => {
+    const el = document.querySelector(selector); if (el && values[Object.keys(values)[0]][lang]) el.setAttribute(attr, values[Object.keys(values)[0]][lang]);
+  }));
+  try { localStorage.setItem('sabo-language', lang); } catch (_) {}
+}
+
 function toast(message, kind = 'ok') {
   const el = $('#toast');
   el.textContent = String(message || '');
@@ -135,6 +195,8 @@ function renderRows() {
       <div class="actions">${primaryAction}<button data-act="open-folder" data-id="${safeIndex}" ${disabled ? 'disabled' : ''} title="Open containing folder">▱</button><button data-act="open-file" data-id="${safeIndex}" ${disabled || !canOpen ? 'disabled' : ''} title="Open file">↗</button><button data-act="remove" data-id="${safeIndex}" ${disabled ? 'disabled' : ''} title="Remove from list">×</button></div>
     </div>`;
   }).join('') || '<div class="empty-state"><b>No downloads found</b><span>Try a different filter or add a URL above.</span></div>';
+  let lang = 'en'; try { lang = localStorage.getItem('sabo-language') || 'en'; } catch (_) {}
+  applyLanguage(lang);
 }
 
 function renderStats() {
@@ -410,6 +472,7 @@ function bindEvents() {
     try { localStorage.setItem('sabo-theme', $('#appearance').value); } catch (_) {}
     hideModal('#settingsPanel');
   });
+  $('#language').addEventListener('change', () => applyLanguage($('#language').value));
   $('#appearance').addEventListener('change', () => {
     document.body.classList.toggle('light', $('#appearance').value === 'light');
     try { localStorage.setItem('sabo-theme', $('#appearance').value); } catch (_) {}
@@ -433,6 +496,10 @@ async function init() {
     if (localStorage.getItem('sabo-theme') === 'light') document.body.classList.add('light');
   } catch (_) {}
   $('#appearance').value = document.body.classList.contains('light') ? 'light' : 'dark';
+  let savedLanguage = 'en';
+  try { savedLanguage = localStorage.getItem('sabo-language') || 'en'; } catch (_) {}
+  $('#language').value = savedLanguage;
+  applyLanguage(savedLanguage);
   bindEvents();
   await refresh();
   await refreshCapabilities();

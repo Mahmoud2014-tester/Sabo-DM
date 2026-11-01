@@ -70,9 +70,9 @@
 - [ ] Must verify actual button behavior on Windows after GitHub Actions build.
 
 
-## Root-cause remediation package (v1.29.0)
+## Root-cause remediation package (v1.3.1)
 
-- [x] Updated browser extension popup styling and bumped extension version to 1.29.0.
+- [x] Updated browser extension popup styling and bumped extension version to 1.3.1.
 - [x] Refreshed confirmation window layout and compacted it to reduce unnecessary scrolling.
 - [x] Added Video / Audio output choice to the confirmation window for supported media pages.
 - [x] Passed the selected audio-only flag and output format from confirmation UI → extension service worker → loopback Go API → download queue.

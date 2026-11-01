@@ -70,7 +70,7 @@ The Settings button opens an appearance panel (dark/light). The global speed-lim
 
 ## Browser extension refresh and synchronized hand-off
 
-For an upgrade, remove the previous Sabo DM extension from `chrome://extensions` / `edge://extensions`, then load the new extracted `extension` directory using **Load unpacked**. Do not keep two Sabo DM extension copies enabled simultaneously. The extension version is now 1.29.0.
+For an upgrade, remove the previous Sabo DM extension from `chrome://extensions` / `edge://extensions`, then load the new extracted `extension` directory using **Load unpacked**. Do not keep two Sabo DM extension copies enabled simultaneously. The extension version is now 1.3.1.
 
 The confirmation window supports choosing Video or audio output (MP3, M4A, AAC, Opus, WAV, FLAC, or original audio). The extension sends one request to the desktop bridge; the browser's paused copy is cancelled only after the local Go application accepts the request. If the desktop application rejects or times out, the original browser download is resumed so the user does not lose it.
 
@@ -81,7 +81,7 @@ Audio extraction/conversion from supported media pages uses yt-dlp and FFmpeg/FF
 The in-app **Settings → Update Version** feature checks the latest stable GitHub Release. To publish an update that the installed app can install:
 
 1. Push the source changes to `main`.
-2. Create and push a semantic version tag, e.g. `v1.29.0`.
+2. Create and push a semantic version tag, e.g. `v1.3.1`.
 3. The `Sabo DM stable release` workflow runs tests, builds `Sabo-DM.exe`, `Sabo-DM-Diagnostic.exe`, packages `Sabo-DM-Extension.zip`, and attaches them to a GitHub Release.
 4. Users can then use **Settings → Update Version → Check for updates**.
 
