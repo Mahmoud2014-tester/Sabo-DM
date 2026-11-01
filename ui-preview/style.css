@@ -61,3 +61,9 @@
 [dir="rtl"] .detailfoot label{justify-content:flex-start}
 @media(max-width:900px){.media-options{grid-template-columns:1fr}.detailfoot{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.settings-card{padding:16px}.tool-row{align-items:flex-start;flex-direction:column}.settings-card .smallbtn{align-self:flex-start}.detailfoot{grid-template-columns:1fr}.detailfoot label{justify-content:space-between}}
+
+/* Adaptive viewport layout: no outer page scrollbar; content scrolls only when needed. */
+html,body{width:100%;height:100%;min-height:0;overflow:hidden}.app{height:100dvh;min-height:0;max-height:100dvh;overflow:hidden}.sidebar{height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain}main{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-bottom:14px}
+@media(max-height:760px){main{padding-top:14px;padding-bottom:10px}.brand{padding-bottom:18px}.stats article{padding:11px 14px}.addpanel{padding:13px 15px;margin-bottom:10px}.detail{padding:12px 15px;margin-top:10px}.toolbar{margin:10px 0 7px}.detailfoot{margin-top:10px;padding-top:9px}}
+@media(max-width:950px){.app{grid-template-columns:190px minmax(0,1fr)}main{min-width:0}.listhead,.download-row{grid-template-columns:minmax(120px,2fr) 65px minmax(100px,1fr) 80px 75px}}
+@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}main{padding:14px 12px;overflow-y:auto}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.urlrow{flex-wrap:wrap}.urlrow input{min-width:0;flex-basis:100%}.urlrow .primary{min-height:38px}.toolbar{flex-wrap:wrap}.tools{flex-wrap:wrap}.tools input{min-width:0;width:100%}}

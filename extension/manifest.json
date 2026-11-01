@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sabo DM — Download Integration",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Integrated browser download detection, confirmation, media extraction and queue control for Sabo DM.",
   "permissions": [
     "downloads",

@@ -32,7 +32,13 @@ const I18N = {
     "Sabo DM Settings":"إعدادات Sabo DM","Application tools, updates and appearance":"أدوات التطبيق والتحديثات والمظهر","Appearance":"المظهر","Theme":"السمة","Dark":"داكن","Light":"فاتح","Language":"اللغة","English (Primary)":"الإنجليزية (أساسية)","العربية":"العربية","Français":"الفرنسية",
     "Media tools":"أدوات الوسائط","Checking… — required for MP3, AAC, Opus, WAV and FLAC conversion.":"جارٍ التحقق… مطلوبة للتحويل إلى MP3 وAAC وOpus وWAV وFLAC.","Install FFmpeg":"تثبيت FFmpeg","yt-dlp":"yt-dlp","Install / Update":"تثبيت / تحديث",
     "Software update":"تحديث البرنامج","Update Version":"تحديث الإصدار","Check GitHub for the latest stable release.":"تحقق من GitHub لمعرفة أحدث إصدار مستقر.","Check for updates":"التحقق من وجود تحديثات","Download and install update":"تنزيل التحديث وتثبيته","View release notes on GitHub ↗":"عرض ملاحظات الإصدار على GitHub ↗","Done":"تم",
-    "Local desktop engine":"محرك سطح المكتب المحلي","All download commands are handled by the Go engine":"يتولى محرك Go جميع أوامر التنزيل","Create download queue":"إنشاء قائمة تنزيل","Give this queue a name. You can assign downloads to it from the dashboard.":"أدخل اسم القائمة. يمكنك إسناد التنزيلات إليها من لوحة التحكم.","Queue name":"اسم القائمة","Cancel":"إلغاء","Create queue":"إنشاء قائمة"
+    "Local desktop engine":"محرك سطح المكتب المحلي","All download commands are handled by the Go engine":"يتولى محرك Go جميع أوامر التنزيل","Create download queue":"إنشاء قائمة تنزيل","Give this queue a name. You can assign downloads to it from the dashboard.":"أدخل اسم القائمة. يمكنك إسناد التنزيلات إليها من لوحة التحكم.","Queue name":"اسم القائمة","Cancel":"إلغاء","Create queue":"إنشاء قائمة",
+    "You are running the latest release ({version}).":"أنت تستخدم أحدث إصدار ({version}).",
+    "Update available: {latest} (current: {current})":"يتوفر تحديث: {latest} (الإصدار الحالي: {current})",
+    "Checking the latest stable GitHub release…":"جارٍ التحقق من أحدث إصدار مستقر على GitHub…",
+    "Downloading and verifying the update…":"جارٍ تنزيل التحديث والتحقق منه…",
+    "Installing {version}. Sabo DM will restart automatically.":"جارٍ تثبيت {version}. سيُعاد تشغيل Sabo DM تلقائيًا.",
+    "Update verified. Restarting Sabo DM…":"تم التحقق من التحديث. جارٍ إعادة تشغيل Sabo DM…"
   },
   fr: {
     "Downloads":"Téléchargements","Manage your files, media and torrents":"Gérez vos fichiers, médias et torrents","LIBRARY":"BIBLIOTHÈQUE","All downloads":"Tous les téléchargements","Active":"Actifs","Queued":"En attente","Completed":"Terminés","Failed":"Échoués",
@@ -48,9 +54,16 @@ const I18N = {
     "Sabo DM Settings":"Paramètres Sabo DM","Application tools, updates and appearance":"Outils, mises à jour et apparence","Appearance":"Apparence","Theme":"Thème","Dark":"Sombre","Light":"Clair","Language":"Langue","English (Primary)":"Anglais (principal)","العربية":"Arabe","Français":"Français",
     "Media tools":"Outils multimédias","Checking… — required for MP3, AAC, Opus, WAV and FLAC conversion.":"Vérification… requis pour convertir en MP3, AAC, Opus, WAV et FLAC.","Install FFmpeg":"Installer FFmpeg","yt-dlp":"yt-dlp","Install / Update":"Installer / Mettre à jour",
     "Software update":"Mise à jour du logiciel","Update Version":"Mettre à jour la version","Check GitHub for the latest stable release.":"Rechercher la dernière version stable sur GitHub.","Check for updates":"Rechercher des mises à jour","Download and install update":"Télécharger et installer","View release notes on GitHub ↗":"Voir les notes de version sur GitHub ↗","Done":"Terminé",
-    "Local desktop engine":"Moteur local","All download commands are handled by the Go engine":"Toutes les commandes sont gérées par le moteur Go","Create download queue":"Créer une file d’attente","Give this queue a name. You can assign downloads to it from the dashboard.":"Nommez cette file. Vous pourrez y affecter des téléchargements.","Queue name":"Nom de la file","Cancel":"Annuler","Create queue":"Créer"
+    "Local desktop engine":"Moteur local","All download commands are handled by the Go engine":"Toutes les commandes sont gérées par le moteur Go","Create download queue":"Créer une file d’attente","Give this queue a name. You can assign downloads to it from the dashboard.":"Nommez cette file. Vous pourrez y affecter des téléchargements.","Queue name":"Nom de la file","Cancel":"Annuler","Create queue":"Créer",
+    "You are running the latest release ({version}).":"Vous utilisez la dernière version ({version}).",
+    "Update available: {latest} (current: {current})":"Mise à jour disponible : {latest} (version actuelle : {current})",
+    "Checking the latest stable GitHub release…":"Vérification de la dernière version stable sur GitHub…",
+    "Downloading and verifying the update…":"Téléchargement et vérification de la mise à jour…",
+    "Installing {version}. Sabo DM will restart automatically.":"Installation de {version}. Sabo DM redémarrera automatiquement.",
+    "Update verified. Restarting Sabo DM…":"Mise à jour vérifiée. Redémarrage de Sabo DM…"
   }
 };
+function tr(key, values = {}) { const lang = document.documentElement.lang || 'en'; let result = (I18N[lang] || {})[key] || key; for (const [name,value] of Object.entries(values)) result = result.replaceAll(`{${name}}`, String(value)); return result; }
 const originalTextNodes = new WeakMap();
 function applyLanguage(language) {
   const lang = ['ar','fr'].includes(language) ? language : 'en';
@@ -335,14 +348,14 @@ async function deleteCurrentQueue() {
 
 async function checkUpdate() {
   $('#checkUpdate').disabled = true;
-  $('#updateStatus').textContent = 'Checking the latest stable GitHub release…';
+  $('#updateStatus').textContent = tr('Checking the latest stable GitHub release…');
   $('#installUpdate').classList.add('hidden');
   $('#releaseLink').classList.add('hidden');
   try {
     updateInfo = await request('/update/check');
     $('#updateStatus').textContent = updateInfo.updateAvailable
-      ? `Update available: ${updateInfo.latestVersion} (current: ${updateInfo.currentVersion})`
-      : `You are running the latest release (${updateInfo.currentVersion}).`;
+      ? tr('Update available: {latest} (current: {current})', { latest: updateInfo.latestVersion, current: updateInfo.currentVersion })
+      : tr('You are running the latest release ({version}).', { version: updateInfo.currentVersion });
     if (updateInfo.releaseUrl) { $('#releaseLink').href = updateInfo.releaseUrl; $('#releaseLink').classList.remove('hidden'); }
     if (updateInfo.updateAvailable && updateInfo.hasWindowsAsset) $('#installUpdate').classList.remove('hidden');
     else if (updateInfo.updateAvailable) $('#updateStatus').textContent += ' The release has no Windows executable asset.';
@@ -354,11 +367,11 @@ async function installUpdate() {
   if (!updateInfo?.updateAvailable || !updateInfo?.hasWindowsAsset) return;
   if (!confirm(`Download and install Sabo DM ${updateInfo.latestVersion}? The application will close and restart.`)) return;
   $('#installUpdate').disabled = true;
-  $('#updateStatus').textContent = 'Downloading and verifying the update…';
+  $('#updateStatus').textContent = tr('Downloading and verifying the update…');
   try {
     const result = await request('/update/install', { method: 'POST', body: '{}' });
-    $('#updateStatus').textContent = `Installing ${result.latestVersion}. Sabo DM will restart automatically.`;
-    toast('Update verified. Restarting Sabo DM…');
+    $('#updateStatus').textContent = tr('Installing {version}. Sabo DM will restart automatically.', { version: result.latestVersion });
+    toast(tr('Update verified. Restarting Sabo DM…'));
   } catch (error) {
     $('#updateStatus').textContent = error.message;
     $('#installUpdate').disabled = false;

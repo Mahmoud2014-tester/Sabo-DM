@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -135,19 +136,33 @@ func probe(ctx context.Context, link string) (fileInfo, error) {
 	if resp.StatusCode != 200 && resp.StatusCode != 206 {
 		return info, fmt.Errorf("server returned HTTP %d - not a downloadable file link", resp.StatusCode)
 	}
-	if strings.HasPrefix(strings.ToLower(resp.Header.Get("Content-Type")), "text/html") {
+	contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0])
+	if strings.HasPrefix(strings.ToLower(contentType), "text/html") {
 		return info, fmt.Errorf("this link is a web page (HTML), not a direct file link, and this site is not supported yet")
 	}
 	if cd := resp.Header.Get("Content-Disposition"); cd != "" {
-		if _, params, perr := mime.ParseMediaType(cd); perr == nil {
+		if _, params, e := mime.ParseMediaType(cd); e == nil {
 			info.Name = params["filename"]
+			if info.Name == "" {
+				info.Name = params["filename*"]
+			}
+		}
+	}
+	if info.Name == "" {
+		info.Name = nameFromURL(link)
+	}
+	if filepath.Ext(info.Name) == "" && contentType != "" {
+		if exts, _ := mime.ExtensionsByType(contentType); len(exts) > 0 {
+			priority := map[string]int{".pdf": 1, ".zip": 1, ".7z": 1, ".rar": 1, ".mp3": 1, ".mp4": 1, ".jpg": 1, ".jpeg": 1, ".png": 1, ".docx": 1, ".xlsx": 1, ".exe": 1}
+			sort.SliceStable(exts, func(i, j int) bool { return priority[strings.ToLower(exts[i])] > priority[strings.ToLower(exts[j])] })
+			info.Name += exts[0]
 		}
 	}
 	if resp.StatusCode == 206 {
-		var s, e, t int64
-		n, _ := fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes %d-%d/%d", &s, &e, &t)
-		if n == 3 && t > 0 {
-			info.Size, info.Ranges = t, true
+		var start, end, total int64
+		n, _ := fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes %d-%d/%d", &start, &end, &total)
+		if n == 3 && total > 0 {
+			info.Size, info.Ranges = total, true
 			return info, nil
 		}
 		return info, fmt.Errorf("server did not report the file size")

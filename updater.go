@@ -78,26 +78,43 @@ func fetchLatestRelease(ctx context.Context) (*githubRelease, error) {
 }
 
 func compareVersions(a, b string) int {
-	clean := func(v string) []int {
-		v = strings.TrimPrefix(strings.TrimSpace(v), "v")
-		if i := strings.IndexAny(v, "-+"); i >= 0 {
-			v = v[:i]
-		}
-		parts := strings.Split(v, ".")
-		out := make([]int, 3)
-		for i := 0; i < len(parts) && i < 3; i++ {
-			out[i], _ = strconv.Atoi(parts[i])
-		}
-		return out
+	type version struct {
+		major, minor, patch int
+		pre                 string
 	}
-	aa, bb := clean(a), clean(b)
-	for i := 0; i < 3; i++ {
-		if aa[i] < bb[i] {
+	parse := func(raw string) version {
+		raw = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "v"))
+		base, pre, _ := strings.Cut(raw, "-")
+		base, _, _ = strings.Cut(base, "+")
+		parts := strings.Split(base, ".")
+		nums := [3]int{}
+		for i := 0; i < len(parts) && i < 3; i++ {
+			nums[i], _ = strconv.Atoi(parts[i])
+		}
+		return version{nums[0], nums[1], nums[2], pre}
+	}
+	aa, bb := parse(a), parse(b)
+	left, right := []int{aa.major, aa.minor, aa.patch}, []int{bb.major, bb.minor, bb.patch}
+	for i := range left {
+		if left[i] < right[i] {
 			return -1
 		}
-		if aa[i] > bb[i] {
+		if left[i] > right[i] {
 			return 1
 		}
+	}
+	// Stable versions outrank prereleases with the same numeric version.
+	if aa.pre == "" && bb.pre != "" {
+		return 1
+	}
+	if aa.pre != "" && bb.pre == "" {
+		return -1
+	}
+	if aa.pre < bb.pre {
+		return -1
+	}
+	if aa.pre > bb.pre {
+		return 1
 	}
 	return 0
 }
