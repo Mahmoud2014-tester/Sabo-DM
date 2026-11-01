@@ -257,7 +257,6 @@ func runSystemTray(open, exit, pause, resume func()) {
 		systray.SetTitle("Sabo DM")
 		systray.SetTooltip("Sabo DM — Download Manager")
 		show := systray.AddMenuItem("Open Sabo DM", "Show the download manager")
-		settings := systray.AddMenuItem("Settings", "Open Sabo DM settings")
 		systray.AddSeparator()
 		p := systray.AddMenuItem("Pause all downloads", "Pause active downloads")
 		r := systray.AddMenuItem("Resume all downloads", "Resume paused downloads")

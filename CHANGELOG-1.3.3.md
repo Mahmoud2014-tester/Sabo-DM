@@ -6,3 +6,7 @@
 - Added red-arrow / black-ring application icon and Inno Setup installer with desktop shortcut and startup tasks enabled by default.
 
 This source update requires Windows CI and runtime verification before release.
+
+
+### Build correction
+- Removed an unused System Tray Settings menu declaration that caused Go compilation to fail (`declared and not used: settings`). Settings remain accessible from the application dashboard.
