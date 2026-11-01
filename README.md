@@ -70,7 +70,7 @@ The Settings button opens an appearance panel (dark/light). The global speed-lim
 
 ## Browser extension refresh and synchronized hand-off
 
-For an upgrade, remove the previous Sabo DM extension from `chrome://extensions` / `edge://extensions`, then load the new extracted `extension` directory using **Load unpacked**. Do not keep two Sabo DM extension copies enabled simultaneously. The extension version is now 1.3.2.
+For an upgrade, remove the previous Sabo DM extension from `chrome://extensions` / `edge://extensions`, then load the new extracted `extension` directory using **Load unpacked**. Do not keep two Sabo DM extension copies enabled simultaneously. The extension version is now 1.3.3.
 
 The confirmation window supports choosing Video or audio output (MP3, M4A, AAC, Opus, WAV, FLAC, or original audio). The extension sends one request to the desktop bridge; the browser's paused copy is cancelled only after the local Go application accepts the request. If the desktop application rejects or times out, the original browser download is resumed so the user does not lose it.
 
@@ -81,8 +81,19 @@ Audio extraction/conversion from supported media pages uses yt-dlp and FFmpeg/FF
 The in-app **Settings → Update Version** feature checks the latest stable GitHub Release. To publish an update that the installed app can install:
 
 1. Push the source changes to `main`.
-2. Create and push a semantic version tag, e.g. `v1.3.2`.
+2. Create and push a semantic version tag, e.g. `v1.3.3`.
 3. The `Sabo DM stable release` workflow runs tests, builds `Sabo-DM.exe`, `Sabo-DM-Diagnostic.exe`, packages `Sabo-DM-Extension.zip`, and attaches them to a GitHub Release.
 4. Users can then use **Settings → Update Version → Check for updates**.
 
 The updater downloads only the `Sabo-DM.exe` asset from a published stable GitHub Release, validates its size, PE architecture and GitHub SHA-256 digest when supplied, stages it, then restarts the application to replace the running executable. It does not silently install arbitrary branch commits.
+
+
+## v1.3.3 Windows behavior and installer
+
+- Clicking the window X hides the dashboard while the desktop engine and downloads keep running.
+- System Tray provides Open Sabo DM, Settings, Pause all downloads, Resume all downloads, and Exit. Exit cancels active downloads and closes the application.
+- New settings default to launching with Windows; the installer also enables the per-user startup entry by default.
+- The Inno Setup script `Sabo-DM-Setup.iss` creates Start Menu and optional Desktop shortcuts.
+- The red download arrow / black circular ring icon is embedded from `sabo.ico`.
+
+The Windows build and runtime behavior must be verified by GitHub Actions and on a Windows machine before publishing this as a stable release.

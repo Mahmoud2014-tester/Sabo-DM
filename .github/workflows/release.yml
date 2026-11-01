@@ -37,7 +37,7 @@ jobs:
         shell: pwsh
         run: |
           $gopath = go env GOPATH
-          & "$gopath\\bin\\rsrc.exe" -manifest Sabo-DM.manifest -o rsrc.syso
+          & "$gopath\\bin\\rsrc.exe" -manifest Sabo-DM.manifest -ico sabo.ico -o rsrc.syso
 
       - name: Build stable Windows application
         shell: pwsh
@@ -48,6 +48,14 @@ jobs:
       - name: Build diagnostic application
         shell: pwsh
         run: go build -trimpath -tags dev -ldflags="-X main.AppVersion=${{ github.ref_name }}" -o Sabo-DM-Diagnostic.exe .
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" Sabo-DM-Setup.iss'
 
       - name: Package browser extension
         shell: pwsh
@@ -62,3 +70,4 @@ jobs:
             Sabo-DM.exe
             Sabo-DM-Diagnostic.exe
             Sabo-DM-Extension.zip
+            dist/Sabo-DM-Setup.exe

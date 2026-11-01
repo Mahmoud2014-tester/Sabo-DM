@@ -48,12 +48,12 @@ if errorlevel 1 goto :fail
 
 echo.
 echo [5/6] Building normal GUI application...
-go build -trimpath -ldflags="-s -w -H windowsgui -X main.AppVersion=1.3.2-dev" -o Sabo-DM.exe .
+go build -trimpath -ldflags="-s -w -H windowsgui -X main.AppVersion=1.3.3-dev" -o Sabo-DM.exe .
 if errorlevel 1 goto :fail
 
 echo.
 echo [6/6] Building diagnostic version (console + log)...
-go build -trimpath -tags dev -ldflags="-X main.AppVersion=1.3.2-dev" -o Sabo-DM-Diagnostic.exe .
+go build -trimpath -tags dev -ldflags="-X main.AppVersion=1.3.3-dev" -o Sabo-DM-Diagnostic.exe .
 if errorlevel 1 goto :fail
 
 echo.

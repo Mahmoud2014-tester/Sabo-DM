@@ -6,7 +6,7 @@
 4. Extract the repository ZIP.
 5. Enable **Developer mode**.
 6. Click **Load unpacked** and select the repository's `extension` folder (the folder containing `manifest.json`).
-7. Confirm that the extension version is **1.3.1**.
+7. Confirm that the extension version is **1.3.3**.
 8. Start Sabo DM desktop app, then click the extension icon and use **Check connection**.
 
 The extension communicates only with the local Sabo DM desktop service at `127.0.0.1:19345`. It pauses a browser download only when Chrome confirms the download is paused. It cancels the browser's copy only after the desktop service accepts the request. If the desktop service rejects or times out, the extension leaves the browser download available or resumes it.

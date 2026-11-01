@@ -61,7 +61,7 @@ func fetchLatestRelease(ctx context.Context) (*githubRelease, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("no published Sabo DM release exists yet; publish a version tag such as v1.3.1 on GitHub first")
+		return nil, fmt.Errorf("no published Sabo DM release exists yet; publish a version tag such as v1.3.3 on GitHub first")
 	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))

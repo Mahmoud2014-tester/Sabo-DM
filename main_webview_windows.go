@@ -3,16 +3,22 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"syscall"
+
+	"github.com/getlantern/systray"
 	"time"
 
 	webview2 "github.com/jchv/go-webview2"
 )
+
+//go:embed sabo.ico
+var saboTrayIcon []byte
 
 func main() {
 	runtime.LockOSThread()
@@ -49,7 +55,6 @@ func main() {
 		fmt.Println("Could not initialize Microsoft Edge WebView2. Install the Microsoft Edge WebView2 Runtime and try again.")
 		return
 	}
-	defer wv.Destroy()
 
 	// Expose real Windows window-management actions to the dashboard.
 	hwnd := uintptr(wv.Window())
@@ -69,8 +74,10 @@ func main() {
 			}
 		})
 	})
+	// The title-bar X hides the window but deliberately leaves the engine alive.
+	installCloseToHide(hwnd, user32)
 	_ = wv.Bind("saboClose", func() {
-		wv.Dispatch(func() { wv.Destroy() })
+		wv.Dispatch(func() { showWindow.Call(hwnd, 0) }) // Hide, do not terminate.
 	})
 
 	q := &Queue{MaxParallel: cfg.Parallel, MaxSegments: cfg.MaxSegments, Queues: cfg.Queues}
@@ -91,7 +98,7 @@ func main() {
 	browserSetting.Store(cfg.CookieBrowser)
 	setAppLanguage(cfg.Language)
 
-	startDashboardServer(q, saveDir, wv.Dispatch, func() { wv.Dispatch(func() { wv.Destroy() }) })
+	startDashboardServer(q, saveDir, wv.Dispatch, func() { wv.Dispatch(func() { showWindow.Call(hwnd, 0) }) })
 	startServer(func(r addReq) error {
 		done := make(chan error, 1)
 		wv.Dispatch(func() {
@@ -150,6 +157,34 @@ func main() {
 		go setAutostart(true)
 	}
 
+	// System-tray Exit is the only full application exit. The tray's Open action
+	// restores the WebView2 window; hiding the window never stops downloads.
+	go runSystemTray(func() { showAppWindow(hwnd, user32) }, func() {
+		wv.Dispatch(func() {
+			q.CancelAll()
+			q.save()
+			wv.Destroy()
+		})
+	}, func() {
+		wv.Dispatch(func() {
+			for _, item := range q.Items {
+				if item.running {
+					q.Pause(item)
+				} else if item.Status == stPaused {
+					q.Start(item)
+				}
+			}
+		})
+	}, func() {
+		wv.Dispatch(func() {
+			for _, item := range q.Items {
+				if item.Status == stPaused {
+					q.Start(item)
+				}
+			}
+		})
+	})
+
 	// Wait briefly for the loopback dashboard server before navigating WebView2.
 	health := &http.Client{Timeout: 250 * time.Millisecond}
 	deadline := time.Now().Add(8 * time.Second)
@@ -162,11 +197,17 @@ func main() {
 		time.Sleep(100 * time.Millisecond)
 	}
 	wv.Navigate("http://127.0.0.1:19346/dashboard/")
+	for _, arg := range os.Args[1:] {
+		if arg == "--background" {
+			showWindow.Call(hwnd, 0)
+			break
+		}
+	}
 	wv.Run()
-
 	q.CancelAll()
 	q.save()
 	q.close()
+	wv.Destroy()
 }
 
 func showAppWindow(hwnd uintptr, user32 *syscall.LazyDLL) {
@@ -183,4 +224,60 @@ func defaultDownloadDir() string {
 	}
 	dir, _ := os.Getwd()
 	return dir
+}
+
+// installCloseToHide subclasses the native WebView2 top-level window. WM_CLOSE
+// from the title-bar X hides the window; it does not terminate the engine.
+var windowProcCallback uintptr
+
+func installCloseToHide(hwnd uintptr, user32 *syscall.LazyDLL) {
+	const (
+		gwlpWndProc = ^uintptr(3)
+		wmClose     = 0x0010
+		swHide      = 0
+	)
+	set := user32.NewProc("SetWindowLongPtrW")
+	call := user32.NewProc("CallWindowProcW")
+	show := user32.NewProc("ShowWindow")
+	var oldProc uintptr
+	windowProcCallback = syscall.NewCallback(func(h, msg, wp, lp uintptr) uintptr {
+		if msg == wmClose {
+			show.Call(h, swHide)
+			return 0
+		}
+		ret, _, _ := call.Call(oldProc, h, msg, wp, lp)
+		return ret
+	})
+	oldProc, _, _ = set.Call(hwnd, gwlpWndProc, windowProcCallback)
+}
+
+func runSystemTray(open, exit, pause, resume func()) {
+	systray.Run(func() {
+		systray.SetIcon(saboTrayIcon)
+		systray.SetTitle("Sabo DM")
+		systray.SetTooltip("Sabo DM — Download Manager")
+		show := systray.AddMenuItem("Open Sabo DM", "Show the download manager")
+		settings := systray.AddMenuItem("Settings", "Open Sabo DM settings")
+		systray.AddSeparator()
+		p := systray.AddMenuItem("Pause all downloads", "Pause active downloads")
+		r := systray.AddMenuItem("Resume all downloads", "Resume paused downloads")
+		systray.AddSeparator()
+		quit := systray.AddMenuItem("Exit", "Close Sabo DM and stop all downloads")
+		go func() {
+			for {
+				select {
+				case <-show.ClickedCh:
+					open()
+				case <-p.ClickedCh:
+					pause()
+				case <-r.ClickedCh:
+					resume()
+				case <-quit.ClickedCh:
+					exit()
+					systray.Quit()
+					return
+				}
+			}
+		}()
+	}, func() {})
 }
