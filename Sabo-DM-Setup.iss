@@ -1,5 +1,5 @@
 #define MyAppName "Sabo DM"
-#define MyAppVersion "1.3.3"
+#define MyAppVersion "1.3.4"
 #define MyAppPublisher "Sabo DM"
 #define MyAppExeName "Sabo-DM.exe"
 
@@ -22,7 +22,7 @@ ArchitecturesInstallIn64BitMode=x64
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"
-Name: "startup"; Description: "Run Sabo DM at Windows startup"; GroupDescription: "Startup:"
+Name: "startup"; Description: "Run Sabo DM at Windows startup (recommended)"; GroupDescription: "Startup:"
 
 [Files]
 Source: "Sabo-DM.exe"; DestDir: "{app}"; Flags: ignoreversion

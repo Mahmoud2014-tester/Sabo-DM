@@ -67,3 +67,92 @@ html,body{width:100%;height:100%;min-height:0;overflow:hidden}.app{height:100dvh
 @media(max-height:760px){main{padding-top:14px;padding-bottom:10px}.brand{padding-bottom:18px}.stats article{padding:11px 14px}.addpanel{padding:13px 15px;margin-bottom:10px}.detail{padding:12px 15px;margin-top:10px}.toolbar{margin:10px 0 7px}.detailfoot{margin-top:10px;padding-top:9px}}
 @media(max-width:950px){.app{grid-template-columns:190px minmax(0,1fr)}main{min-width:0}.listhead,.download-row{grid-template-columns:minmax(120px,2fr) 65px minmax(100px,1fr) 80px 75px}}
 @media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}main{padding:14px 12px;overflow-y:auto}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.urlrow{flex-wrap:wrap}.urlrow input{min-width:0;flex-basis:100%}.urlrow .primary{min-height:38px}.toolbar{flex-wrap:wrap}.tools{flex-wrap:wrap}.tools input{min-width:0;width:100%}}
+
+/* Sabo DM v1.3.4 — unified black / red visual identity */
+:root{
+ --bg:#08090d;--panel:#111216;--panel2:#191a20;--line:#303139;
+ --text:#f4f4f6;--muted:#a1a1aa;--blue:#ed101b;--green:#18b879;--purple:#d91b2b;
+ --accent:#ed101b;--accent-soft:#351015;--accent-border:#78212a;
+}
+body{background:radial-gradient(ellipse at 80% 0%,#241015 0%,#08090d 48%);color:var(--text)}
+.sidebar{background:#08090c;border-right-color:#292a30}
+.brand{gap:12px;padding-bottom:30px}
+.brand-logo{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 8px #c9001850)}
+.brand b{font-size:20px;letter-spacing:.2px}
+.brand-sabo{color:#f5f5f6}.brand-dm{color:#f01420}
+.brand small{color:#777780;letter-spacing:1.6px}
+.logo{background:#17181d;color:#f01420}
+.nav{color:#b7b7c0}
+.nav.active{background:linear-gradient(100deg,#8e0710,#d90d19);color:#fff}
+.nav.active i{color:#fff}
+.nav:hover,.iconbtn:hover,.smallbtn:hover,.windowbtn:hover{border-color:#a8202b;color:#fff}
+.navlabel{color:#777780}
+.stats article,.addpanel,.download-list,.detail{background:linear-gradient(145deg,#15161b,#101115);border-color:#303139;box-shadow:0 5px 18px #0004}
+.stats small{color:#aaaab3}
+.stats em,.stats span{color:#a0a0aa}
+.pill{color:#ff626a;border-color:#72202a;background:#2b1015}
+.urlrow input,.tools input{background:#090a0e;border-color:#393a43;color:#fff}
+.urlrow input:focus,.tools input:focus,select:focus{border-color:#ef1a25;box-shadow:0 0 0 2px #ef1a2520}
+.primary{background:linear-gradient(135deg,#ff202c,#c90012);color:#fff;box-shadow:0 4px 12px #b0001c35}
+.primary:hover{filter:brightness(1.12)}
+.addfoot a{color:#ff535d}
+.tab.selected{background:#321116;color:#ff737a;border-color:#76232d}
+.smallbtn{border-color:#393a43;color:#b8b8c0}
+.listhead{background:#0d0e12;color:#92929c}
+.download-row{border-top-color:#292a31}
+.fileicon{background:#2a1116;color:#ff626a}
+.progressline b{background:linear-gradient(90deg,#b90012,#ff303b)}
+.status{color:#ff626a}
+.status.done{color:#22c88a}
+.status.queued{color:#f0b54a}
+.actions button,.iconbtn,.windowbtn{background:#191a20;border-color:#3b3c45;color:#e0e0e5}
+.avatar{background:#8f0c17;color:#fff}
+.windowbtn.close{background:#a60b16;border-color:#cf1723;color:#fff}
+.windowbtn.close:hover{background:#e20e1d}
+.detail,.settings-modal,.modal{background:#121318;border-color:#383941}
+button,select{accent-color:#ed101b}
+.sidebar-bottom{border-color:#292a30;color:#b8b8c0}
+.dot,.live i{background:#20c98b}
+.media-options{background:#17181e;border-color:#34353d}
+.media-label select,select{background:#0b0c10;color:#f2f2f4;border-color:#41424a}
+@media(max-height:760px){
+ main{padding:16px 20px 10px}
+ .brand{padding-bottom:18px}
+ .stats article{padding:11px 14px}
+ .addpanel{padding:13px 15px;margin-bottom:10px}
+ .toolbar{margin:10px 0 7px}
+ .detail{padding:12px 15px;margin-top:10px}
+}
+@media(max-width:900px){
+ .app{grid-template-columns:205px minmax(0,1fr)}
+ main{padding:18px 16px}
+ .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .listhead,.download-row{grid-template-columns:minmax(120px,2fr) 70px minmax(90px,1fr) 80px 70px;gap:8px;padding:10px}
+}
+
+/* Keep the native window viewport stable; scroll only the content pane if needed. */
+html,body{height:100%;min-height:0;overflow:hidden}
+.app{height:100dvh;min-height:0;max-height:100dvh;overflow:hidden}
+.sidebar{height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+main{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-bottom:16px}
+@media(max-height:720px){
+ main{padding-top:12px;padding-bottom:8px}
+ .brand{padding-bottom:14px}
+ .stats article{padding:10px 12px}
+ .addpanel{padding:11px 13px;margin-bottom:8px}
+ .toolbar{margin:8px 0 6px}
+ .download-row,.listhead{padding-top:9px;padding-bottom:9px}
+}
+@media(max-width:760px){
+ .app{grid-template-columns:1fr}
+ .sidebar{display:none}
+ main{padding:14px 12px;overflow-y:auto}
+ .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .urlrow{flex-wrap:wrap}
+ .urlrow input{min-width:0;flex:1 1 100%}
+ .urlrow .primary{min-height:40px}
+ .toolbar,.tools{flex-wrap:wrap}
+ .tools input{width:100%;min-width:0}
+ .listhead,.download-row{grid-template-columns:minmax(110px,2fr) 60px minmax(80px,1fr) 70px}
+ .listhead>:nth-child(5),.download-row>:nth-child(5){display:none}
+}

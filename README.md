@@ -97,3 +97,10 @@ The updater downloads only the `Sabo-DM.exe` asset from a published stable GitHu
 - The red download arrow / black circular ring icon is embedded from `sabo.ico`.
 
 The Windows build and runtime behavior must be verified by GitHub Actions and on a Windows machine before publishing this as a stable release.
+
+
+## v1.3.4 visual and desktop update
+
+- Unified black/red visual theme and red-arrow/black-ring application identity.
+- Close (X) hides the window to the notification area; System Tray Exit performs full shutdown and cancels active downloads.
+- Installer provides desktop shortcut and Windows startup tasks.
