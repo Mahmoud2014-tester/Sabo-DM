@@ -51,8 +51,8 @@ func main() {
 		AutoFocus: true,
 		WindowOptions: webview2.WindowOptions{
 			Title:  "Sabo DM",
-			Width:  uint(windowWidth),
-			Height: uint(windowHeight),
+			Width:  windowWidth,
+			Height: windowHeight,
 			Center: true,
 		},
 	})
