@@ -426,23 +426,32 @@ func bestArgs(haveFFmpeg bool) []string {
 }
 
 func audioOptions(haveFFmpeg bool) []VideoOpt {
-	// Always expose the common formats. MP3 and AAC conversion require
-	// FFmpeg; without it the caller shows an installation hint and only
-	// offers source-compatible choices for immediate downloading.
+	// Conversion formats require a working FFmpeg/FFprobe pair. Offer explicit
+	// bitrate presets for lossy formats; WAV/FLAC are lossless and have no bitrate
+	// selector here. The first option for each format is the recommended default.
 	if haveFFmpeg {
-		return []VideoOpt{
-			{"MP3", []string{"-f", "bestaudio/b", "-x", "--audio-format", "mp3", "--audio-quality", "0"}},
-			{"M4A", []string{"-f", "bestaudio/b", "-x", "--audio-format", "m4a", "--audio-quality", "0"}},
-			{"AAC", []string{"-f", "bestaudio/b", "-x", "--audio-format", "aac", "--audio-quality", "0"}},
-			{"Best available audio (original format)", []string{"-f", "bestaudio/b"}},
-			{"Opus", []string{"-f", "bestaudio/b", "-x", "--audio-format", "opus", "--audio-quality", "0"}},
-			{"WAV", []string{"-f", "bestaudio/b", "-x", "--audio-format", "wav"}},
-			{"FLAC", []string{"-f", "bestaudio/b", "-x", "--audio-format", "flac"}},
-			{"OGG (Vorbis)", []string{"-f", "bestaudio/b", "-x", "--audio-format", "vorbis", "--audio-quality", "0"}},
+		var opts []VideoOpt
+		for _, f := range []struct{ name, format string }{
+			{"MP3", "mp3"}, {"M4A", "m4a"}, {"AAC", "aac"},
+			{"Opus", "opus"}, {"OGG (Vorbis)", "vorbis"},
+		} {
+			for _, q := range []struct{ label, value string }{
+				{"Best quality (VBR)", "0"}, {"128 kbps", "128K"},
+				{"192 kbps", "192K"}, {"320 kbps", "320K"},
+			} {
+				label := f.name + " — " + q.label
+				args := []string{"-f", "bestaudio/b", "-x", "--audio-format", f.format, "--audio-quality", q.value}
+				opts = append(opts, VideoOpt{label, args})
+			}
 		}
+		opts = append(opts,
+			VideoOpt{"WAV — Lossless", []string{"-f", "bestaudio/b", "-x", "--audio-format", "wav"}},
+			VideoOpt{"FLAC — Lossless", []string{"-f", "bestaudio/b", "-x", "--audio-format", "flac"}},
+			VideoOpt{"Best available audio (original format)", []string{"-f", "bestaudio/b"}},
+		)
+		return opts
 	}
-	// Never offer a conversion format when the required executables are absent.
-	// This prevents a seemingly successful download from failing only afterward.
+	// Without FFmpeg, only offer source-compatible downloads; never promise conversion.
 	return []VideoOpt{
 		{"M4A (source format, when available)", []string{"-f", "bestaudio[ext=m4a]/bestaudio/b"}},
 		{"AAC (source format, when available)", []string{"-f", "bestaudio[ext=aac]/bestaudio/b"}},
