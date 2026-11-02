@@ -24,7 +24,9 @@ let updateInfo = null;
 let toolPoll = null;
 const trackerLastStates = new Map();
 const trackerDismissed = new Set();
-const trackerWindowMode = new URLSearchParams(location.search).get('tracker') === '1';
+const trackerParams = new URLSearchParams(location.search);
+const trackerWindowMode = trackerParams.get('tracker') === '1';
+const trackerDownloadURL = trackerParams.get('url') || '';
 if (trackerWindowMode) document.body.classList.add('tracker-mode');
 
 const I18N = {
@@ -292,9 +294,13 @@ function etaText(item) {
 function renderTrackers() {
   const host = $('#downloadTrackers');
   if (!host) return;
+  // Tracker UI belongs exclusively to the dedicated tracker window. Never
+  // render it over the browser confirmation popup or the main dashboard.
+  if (!trackerWindowMode) { host.replaceChildren(); return; }
   const now = Date.now();
   const visible = [];
   for (const item of downloads) {
+    if (trackerDownloadURL && item.url !== trackerDownloadURL) continue;
     const key = trackerKey(item);
     const state = downloadState(item);
     const previous = trackerLastStates.get(key);
@@ -339,9 +345,12 @@ function render() { renderQueues(); renderRows(); renderStats(); renderDetails()
 async function refresh() {
   try {
     const [items, info] = await Promise.all([request('/downloads'), request('/meta')]);
-    const nextDownloads = Array.isArray(items) ? items : [];
+    const allDownloads = Array.isArray(items) ? items : [];
+    const nextDownloads = trackerWindowMode && trackerDownloadURL
+      ? allDownloads.filter(item => item.url === trackerDownloadURL)
+      : allDownloads;
     if (info && info.language && info.language !== (document.documentElement.lang || 'en')) applyLanguage(info.language);
-    if (seenDownloadURLs !== null) {
+    if (!trackerWindowMode && seenDownloadURLs !== null) {
       const fresh = nextDownloads.filter(item => item.url && !seenDownloadURLs.has(item.url));
       if (fresh.length) {
         showDownloadNotice(fresh[0]);
@@ -661,6 +670,7 @@ async function init() {
   let savedLanguage = 'en';
   try { savedLanguage = localStorage.getItem('sabo-language') || 'en'; } catch (_) {}
   $('#language').value = savedLanguage;
+  if (trackerWindowMode) { const selector = $('#language'); if (selector) selector.disabled = true; }
   if (trackerWindowMode) {
     try { const response = await fetch(`${API}/language`); if (response.ok) savedLanguage = (await response.json()).language || savedLanguage; } catch (_) {}
   }

@@ -3,12 +3,15 @@
 package main
 
 import (
+	"crypto/sha256"
 	_ "embed"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"syscall"
 
 	"github.com/getlantern/systray"
@@ -76,7 +79,7 @@ func main() {
 	})
 	// The title-bar X hides the window but deliberately leaves the engine alive.
 	installCloseToHide(hwnd, user32)
-	trackerShow := startDownloadTrackerWindow()
+	trackerShow, trackerShowAll := startDownloadTrackerWindows()
 	_ = wv.Bind("saboClose", func() {
 		wv.Dispatch(func() { showWindow.Call(hwnd, 0) }) // Hide, do not terminate.
 	})
@@ -140,7 +143,9 @@ func main() {
 			}
 			if err == nil {
 				showAppWindow(hwnd, user32)
-				trackerShow()
+				if r.Action != "queue" {
+					trackerShow(r.URL)
+				}
 			}
 			done <- err
 		})
@@ -183,7 +188,7 @@ func main() {
 
 	// System-tray Exit is the only full application exit. The tray's Open action
 	// restores the WebView2 window; hiding the window never stops downloads.
-	go runSystemTray(func() { showAppWindow(hwnd, user32) }, trackerShow, func() {
+	go runSystemTray(func() { showAppWindow(hwnd, user32) }, trackerShowAll, func() {
 		wv.Dispatch(func() {
 			q.CancelAll()
 			q.save()
@@ -309,50 +314,71 @@ func runSystemTray(open, showTracker, exit, pause, resume func()) {
 	}, func() {})
 }
 
-// startDownloadTrackerWindow creates a second, independent WebView2 top-level
-// window on its own locked OS thread. The existing dashboard API remains the
-// single source of truth, so tracker controls act on the same Go queue.
-func startDownloadTrackerWindow() func() {
-	showRequests := make(chan struct{}, 1)
-	ready := make(chan struct{})
-	go func() {
-		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
-		tracker := webview2.NewWithOptions(webview2.WebViewOptions{
-			Debug:         false,
-			DataPath:      filepath.Join(configDir(), "TrackerWebView2"),
-			AutoFocus:     false,
-			WindowOptions: webview2.WindowOptions{Title: "Sabo DM — Download Tracker", Width: 460, Height: 560, Center: false},
-		})
-		if tracker == nil {
-			close(ready)
+// startDownloadTrackerWindows creates one independent WebView2 tracker window
+// per download URL. Each window filters the shared queue to exactly one file.
+func startDownloadTrackerWindows() (func(string), func()) {
+	type trackerHandle struct{ show chan struct{} }
+	var mu sync.Mutex
+	handles := map[string]trackerHandle{}
+	showOne := func(downloadURL string) {
+		if downloadURL == "" {
 			return
 		}
-		hwnd := uintptr(tracker.Window())
-		user32 := syscall.NewLazyDLL("user32.dll")
-		installTrackerMinimizeToTray(hwnd, user32)
-		_ = tracker.Bind("saboTrackerHide", func() { tracker.Dispatch(func() { user32.NewProc("ShowWindow").Call(hwnd, 0) }) })
-		tracker.Navigate("http://127.0.0.1:19346/dashboard/?tracker=1")
-		user32.NewProc("ShowWindow").Call(hwnd, 0) // starts hidden; shown when a download is accepted
-		close(ready)
-		go func() {
-			for range showRequests {
-				tracker.Dispatch(func() {
-					user32.NewProc("ShowWindow").Call(hwnd, 9) // SW_RESTORE
-					user32.NewProc("SetForegroundWindow").Call(hwnd)
-				})
+		mu.Lock()
+		if h, ok := handles[downloadURL]; ok {
+			select {
+			case h.show <- struct{}{}:
+			default:
 			}
+			mu.Unlock()
+			return
+		}
+		show := make(chan struct{}, 1)
+		handles[downloadURL] = trackerHandle{show: show}
+		mu.Unlock()
+		go func() {
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
+			tracker := webview2.NewWithOptions(webview2.WebViewOptions{
+				Debug:         false,
+				DataPath:      filepath.Join(configDir(), "TrackerWebView2", fmt.Sprintf("%x", sha256.Sum256([]byte(downloadURL)))),
+				AutoFocus:     false,
+				WindowOptions: webview2.WindowOptions{Title: "Sabo DM — Download Tracker", Width: 460, Height: 420, Center: false},
+			})
+			if tracker == nil {
+				mu.Lock()
+				delete(handles, downloadURL)
+				mu.Unlock()
+				return
+			}
+			hwnd := uintptr(tracker.Window())
+			user32 := syscall.NewLazyDLL("user32.dll")
+			installTrackerMinimizeToTray(hwnd, user32)
+			_ = tracker.Bind("saboTrackerHide", func() { tracker.Dispatch(func() { user32.NewProc("ShowWindow").Call(hwnd, 0) }) })
+			tracker.Navigate("http://127.0.0.1:19346/dashboard/?tracker=1&url=" + url.QueryEscape(downloadURL))
+			go func() {
+				for range show {
+					tracker.Dispatch(func() { user32.NewProc("ShowWindow").Call(hwnd, 9); user32.NewProc("SetForegroundWindow").Call(hwnd) })
+				}
+			}()
+			tracker.Run()
+			tracker.Destroy()
+			mu.Lock()
+			delete(handles, downloadURL)
+			mu.Unlock()
 		}()
-		tracker.Run()
-		tracker.Destroy()
-	}()
-	<-ready
-	return func() {
-		select {
-		case showRequests <- struct{}{}:
-		default:
+	}
+	showAll := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		for _, h := range handles {
+			select {
+			case h.show <- struct{}{}:
+			default:
+			}
 		}
 	}
+	return showOne, showAll
 }
 
 // The native minimize button and title-bar close both hide the tracker. The
