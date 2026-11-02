@@ -76,6 +76,7 @@ func main() {
 	})
 	// The title-bar X hides the window but deliberately leaves the engine alive.
 	installCloseToHide(hwnd, user32)
+	trackerShow := startDownloadTrackerWindow()
 	_ = wv.Bind("saboClose", func() {
 		wv.Dispatch(func() { showWindow.Call(hwnd, 0) }) // Hide, do not terminate.
 	})
@@ -139,6 +140,7 @@ func main() {
 			}
 			if err == nil {
 				showAppWindow(hwnd, user32)
+				trackerShow()
 			}
 			done <- err
 		})
@@ -181,7 +183,7 @@ func main() {
 
 	// System-tray Exit is the only full application exit. The tray's Open action
 	// restores the WebView2 window; hiding the window never stops downloads.
-	go runSystemTray(func() { showAppWindow(hwnd, user32) }, func() {
+	go runSystemTray(func() { showAppWindow(hwnd, user32) }, trackerShow, func() {
 		wv.Dispatch(func() {
 			q.CancelAll()
 			q.save()
@@ -251,6 +253,7 @@ func defaultDownloadDir() string {
 // installCloseToHide subclasses the native WebView2 top-level window. WM_CLOSE
 // from the title-bar X hides the window; it does not terminate the engine.
 var windowProcCallback uintptr
+var trackerWindowProcCallback uintptr
 
 func installCloseToHide(hwnd uintptr, user32 *syscall.LazyDLL) {
 	const (
@@ -273,12 +276,13 @@ func installCloseToHide(hwnd uintptr, user32 *syscall.LazyDLL) {
 	oldProc, _, _ = set.Call(hwnd, gwlpWndProc, windowProcCallback)
 }
 
-func runSystemTray(open, exit, pause, resume func()) {
+func runSystemTray(open, showTracker, exit, pause, resume func()) {
 	systray.Run(func() {
 		systray.SetIcon(saboTrayIcon)
 		systray.SetTitle("Sabo DM")
 		systray.SetTooltip("Sabo DM — Download Manager")
 		show := systray.AddMenuItem("Open Sabo DM", "Show the download manager")
+		tracker := systray.AddMenuItem("Show Download Tracker", "Restore the separate download tracker window")
 		systray.AddSeparator()
 		p := systray.AddMenuItem("Pause all downloads", "Pause active downloads")
 		r := systray.AddMenuItem("Resume all downloads", "Resume paused downloads")
@@ -289,6 +293,8 @@ func runSystemTray(open, exit, pause, resume func()) {
 				select {
 				case <-show.ClickedCh:
 					open()
+				case <-tracker.ClickedCh:
+					showTracker()
 				case <-p.ClickedCh:
 					pause()
 				case <-r.ClickedCh:
@@ -301,4 +307,75 @@ func runSystemTray(open, exit, pause, resume func()) {
 			}
 		}()
 	}, func() {})
+}
+
+// startDownloadTrackerWindow creates a second, independent WebView2 top-level
+// window on its own locked OS thread. The existing dashboard API remains the
+// single source of truth, so tracker controls act on the same Go queue.
+func startDownloadTrackerWindow() func() {
+	showRequests := make(chan struct{}, 1)
+	ready := make(chan struct{})
+	go func() {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		tracker := webview2.NewWithOptions(webview2.WebViewOptions{
+			Debug:         false,
+			DataPath:      filepath.Join(configDir(), "TrackerWebView2"),
+			AutoFocus:     false,
+			WindowOptions: webview2.WindowOptions{Title: "Sabo DM — Download Tracker", Width: 460, Height: 560, Center: false},
+		})
+		if tracker == nil {
+			close(ready)
+			return
+		}
+		hwnd := uintptr(tracker.Window())
+		user32 := syscall.NewLazyDLL("user32.dll")
+		installTrackerMinimizeToTray(hwnd, user32)
+		_ = tracker.Bind("saboTrackerHide", func() { tracker.Dispatch(func() { user32.NewProc("ShowWindow").Call(hwnd, 0) }) })
+		tracker.Navigate("http://127.0.0.1:19346/dashboard/?tracker=1")
+		user32.NewProc("ShowWindow").Call(hwnd, 0) // starts hidden; shown when a download is accepted
+		close(ready)
+		go func() {
+			for range showRequests {
+				tracker.Dispatch(func() {
+					user32.NewProc("ShowWindow").Call(hwnd, 9) // SW_RESTORE
+					user32.NewProc("SetForegroundWindow").Call(hwnd)
+				})
+			}
+		}()
+		tracker.Run()
+		tracker.Destroy()
+	}()
+	<-ready
+	return func() {
+		select {
+		case showRequests <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// The native minimize button and title-bar close both hide the tracker. The
+// shared Sabo DM notification-area icon provides the restore command.
+func installTrackerMinimizeToTray(hwnd uintptr, user32 *syscall.LazyDLL) {
+	const (
+		gwlpWndProc  = ^uintptr(3)
+		wmClose      = 0x0010
+		wmSysCommand = 0x0112
+		scMinimize   = 0xF020
+		swHide       = 0
+	)
+	set := user32.NewProc("SetWindowLongPtrW")
+	call := user32.NewProc("CallWindowProcW")
+	show := user32.NewProc("ShowWindow")
+	var oldProc uintptr
+	trackerWindowProcCallback = syscall.NewCallback(func(h, msg, wp, lp uintptr) uintptr {
+		if msg == wmClose || (msg == wmSysCommand && (wp&0xFFF0) == scMinimize) {
+			show.Call(h, swHide)
+			return 0
+		}
+		ret, _, _ := call.Call(oldProc, h, msg, wp, lp)
+		return ret
+	})
+	oldProc, _, _ = set.Call(hwnd, gwlpWndProc, trackerWindowProcCallback)
 }

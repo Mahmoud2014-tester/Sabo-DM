@@ -24,6 +24,8 @@ let updateInfo = null;
 let toolPoll = null;
 const trackerLastStates = new Map();
 const trackerDismissed = new Set();
+const trackerWindowMode = new URLSearchParams(location.search).get('tracker') === '1';
+if (trackerWindowMode) document.body.classList.add('tracker-mode');
 
 const I18N = {
   ar: {
@@ -96,6 +98,7 @@ function applyLanguage(language) {
     const el = document.querySelector(selector); if (el && values[Object.keys(values)[0]][lang]) el.setAttribute(attr, values[Object.keys(values)[0]][lang]);
   }));
   try { localStorage.setItem('sabo-language', lang); } catch (_) {}
+  if (!trackerWindowMode) fetch(`${API}/language`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: lang }) }).catch(() => {});
 }
 
 function toast(message, kind = 'ok') {
@@ -337,6 +340,7 @@ async function refresh() {
   try {
     const [items, info] = await Promise.all([request('/downloads'), request('/meta')]);
     const nextDownloads = Array.isArray(items) ? items : [];
+    if (info && info.language && info.language !== (document.documentElement.lang || 'en')) applyLanguage(info.language);
     if (seenDownloadURLs !== null) {
       const fresh = nextDownloads.filter(item => item.url && !seenDownloadURLs.has(item.url));
       if (fresh.length) {
@@ -657,6 +661,9 @@ async function init() {
   let savedLanguage = 'en';
   try { savedLanguage = localStorage.getItem('sabo-language') || 'en'; } catch (_) {}
   $('#language').value = savedLanguage;
+  if (trackerWindowMode) {
+    try { const response = await fetch(`${API}/language`); if (response.ok) savedLanguage = (await response.json()).language || savedLanguage; } catch (_) {}
+  }
   applyLanguage(savedLanguage);
   bindEvents();
   await refresh();

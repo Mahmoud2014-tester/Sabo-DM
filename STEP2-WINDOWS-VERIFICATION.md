@@ -1,9 +1,22 @@
-# Step 2 — Windows verification (v1.3.14)
+# Step 2 — Windows verification (v1.3.15)
 
-1. Build with `build.bat` on Windows.
-2. Start three downloads. Confirm each tracker card updates independently.
-3. Pause one active download. Confirm its state changes to `Pausing…`, then `Paused`; Resume it and confirm transfer continues. Verify the other two downloads are unaffected.
-4. Cancel one download and confirm the others continue.
-5. Complete a download. Confirm its tracker remains visible and displays both destination folder and full destination file path. Test Open file and Open folder after completion.
-6. Change language to English, Arabic, and French. Confirm tracker text and layout update and the tracker does not cover the top-left app controls.
-7. Note: a detached native tracker window is not included in this build and remains outstanding.
+## Separate native tracker window
+1. Run `build.bat` and launch Sabo DM.
+2. Start a download from the browser extension. Confirm a separate Windows window titled `Sabo DM — Download Tracker` appears; it must not be embedded in the main dashboard.
+3. Confirm the tracker shows the same live progress, speed, ETA, status, and destination details as the Go download queue.
+4. Start three downloads. Confirm all cards appear in the separate tracker and update independently.
+5. Click the tracker's native minimize button. Confirm it disappears from the taskbar and downloads continue.
+6. Open the Sabo DM notification-area icon menu and select `Show Download Tracker`. Confirm the same tracker window is restored with current progress.
+7. Click the tracker's title-bar X. Confirm it hides rather than exiting Sabo DM or cancelling downloads. Restore it from the tray menu.
+
+## Existing Step 2 behavior
+8. Pause and resume one download; verify other downloads are unaffected and state transitions complete correctly.
+9. Cancel one download; verify other downloads continue.
+10. Complete a download. Confirm its tracker card remains visible and Open file / Open folder still work.
+11. Change the main app language to English, Arabic, and French. Confirm the tracker updates without restarting either window and RTL layout is correct.
+
+## Expected application behavior
+- The tracker is a separate top-level Windows window, not an in-dashboard overlay.
+- Minimizing or closing the tracker hides only the tracker.
+- The shared Sabo DM tray menu restores the tracker.
+- Hiding the tracker does not pause, cancel, or terminate downloads.

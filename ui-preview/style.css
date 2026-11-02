@@ -169,3 +169,14 @@ main{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behav
 .tracker-name{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:7px}.tracker-meta,.tracker-numbers{display:flex;justify-content:space-between;gap:10px;color:#b6b6c0;font-size:10px;margin:5px 0}.tracker-progress{height:6px;background:#303038;border-radius:8px;overflow:hidden;margin:8px 0 5px}.tracker-progress b{height:100%;display:block;background:linear-gradient(90deg,#b90012,#ff303b);border-radius:8px}.tracker-destination{font-size:9px;color:#8e8e98;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:7px}.tracker-filepath{max-width:100%;margin-top:3px}.tracker-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}.tracker-actions button{border:1px solid #45454e;background:#22232a;color:#f2f2f4;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer}.tracker-actions button:disabled{opacity:.4;cursor:not-allowed}.tracker-actions .tracker-cancel{color:#ff858b;border-color:#76232d}.tracker-card.is-done{border-color:#1c7956}.tracker-card.is-done .tracker-progress b{background:#18b879}.tracker-card.is-failed{border-color:#9b4b26}
 [dir="rtl"] .download-trackers{right:18px;left:auto}.light .tracker-card{background:#fff;color:#20232a;border-color:#c75b63}.light .tracker-meta,.light .tracker-numbers,.light .tracker-destination{color:#5d6470}.light .tracker-actions button{background:#f2f3f5;color:#252830;border-color:#c9cbd1}
 @media(max-width:600px){.download-trackers{bottom:8px;right:8px;left:8px;width:auto;max-height:38vh}.tracker-card{padding:10px}.tracker-actions button{padding:6px}}
+
+/* Dedicated Download Tracker WebView window. */
+body:not(.tracker-mode) #downloadTrackers{display:none!important}
+body.tracker-mode{background:#090b10!important;overflow:hidden!important}
+body.tracker-mode .app{display:block!important;width:100vw;height:100vh;min-height:0;max-height:100vh;overflow:hidden!important;background:transparent!important}
+body.tracker-mode .sidebar{display:none!important}
+body.tracker-mode main{display:block!important;width:100%;height:100%;min-height:0;max-height:100vh;padding:12px!important;overflow:auto!important;background:transparent!important}
+body.tracker-mode main>*:not(#downloadTrackers){display:none!important}
+body.tracker-mode #downloadTrackers{position:static!important;display:flex!important;width:100%!important;max-height:none!important;overflow:visible!important;gap:10px;pointer-events:auto}
+body.tracker-mode .tracker-card{width:100%;box-sizing:border-box}
+body.tracker-mode .tracker-dismiss{display:none}

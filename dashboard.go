@@ -435,7 +435,7 @@ func startDashboardServer(q *Queue, saveDir string, dispatch func(func()), shutd
 				queues = []string{"Default"}
 			}
 			cats := []string{"Files", "Videos", "Music", "Documents", "Torrents"}
-			ch <- map[string]interface{}{"queues": queues, "categories": cats, "downloadsAtOnce": q.MaxParallel, "version": AppVersion}
+			ch <- map[string]interface{}{"queues": queues, "categories": cats, "downloadsAtOnce": q.MaxParallel, "version": AppVersion, "language": getAppLanguage()}
 		})
 		select {
 		case meta := <-ch:
