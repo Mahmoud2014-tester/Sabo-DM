@@ -90,7 +90,7 @@ func startServer(onAdd func(addReq) error, onShow func(), onStatus func(string) 
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"app": "Sabo DM", "version": AppVersion,
 			"ffmpegReady": ffErr == nil, "ytDlpReady": ytErr == nil,
-			"audioFormats": []string{"original", "mp3", "m4a", "aac", "opus", "wav", "flac"},
+			"audioFormats": []string{"original", "mp3", "m4a", "aac", "opus", "wav", "flac", "ogg"},
 		})
 	})
 	mux.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {

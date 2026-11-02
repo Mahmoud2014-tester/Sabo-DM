@@ -438,6 +438,7 @@ func audioOptions(haveFFmpeg bool) []VideoOpt {
 			{"Opus", []string{"-f", "bestaudio/b", "-x", "--audio-format", "opus", "--audio-quality", "0"}},
 			{"WAV", []string{"-f", "bestaudio/b", "-x", "--audio-format", "wav"}},
 			{"FLAC", []string{"-f", "bestaudio/b", "-x", "--audio-format", "flac"}},
+			{"OGG (Vorbis)", []string{"-f", "bestaudio/b", "-x", "--audio-format", "vorbis", "--audio-quality", "0"}},
 		}
 	}
 	// Never offer a conversion format when the required executables are absent.

@@ -21,10 +21,6 @@ import (
 var saboTrayIcon []byte
 
 func main() {
-	// Declare per-monitor DPI awareness before creating any native window.
-	// This prevents Windows from scaling the client area independently of the
-	// non-client title bar, which can clip the native caption buttons.
-	setProcessDPIAwareness()
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -44,15 +40,14 @@ func main() {
 		cfg.MaxSegments = 16
 	}
 
-	windowWidth, windowHeight := initialWindowSize()
 	wv := webview2.NewWithOptions(webview2.WebViewOptions{
 		Debug:     false,
 		DataPath:  filepath.Join(configDir(), "WebView2"),
 		AutoFocus: true,
 		WindowOptions: webview2.WindowOptions{
 			Title:  "Sabo DM",
-			Width:  uint(windowWidth),
-			Height: uint(windowHeight),
+			Width:  1440,
+			Height: 900,
 			Center: true,
 		},
 	})
@@ -64,7 +59,6 @@ func main() {
 	// Expose real Windows window-management actions to the dashboard.
 	hwnd := uintptr(wv.Window())
 	user32 := syscall.NewLazyDLL("user32.dll")
-	ensureNativeWindowFrame(hwnd, user32)
 	showWindow := user32.NewProc("ShowWindow")
 	isZoomed := user32.NewProc("IsZoomed")
 	_ = wv.Bind("saboMinimize", func() {
@@ -236,69 +230,6 @@ func main() {
 	q.save()
 	q.close()
 	wv.Destroy()
-}
-
-// setProcessDPIAwareness must run before WebView2 creates a window. Per-monitor
-// v2 keeps Windows' native title bar and the WebView client area on the same DPI.
-func setProcessDPIAwareness() {
-	const dpiAwarenessContextPerMonitorAwareV2 = ^uintptr(3) // (HANDLE)-4
-	user32 := syscall.NewLazyDLL("user32.dll")
-	if proc := user32.NewProc("SetProcessDpiAwarenessContext"); proc.Find() == nil {
-		ret, _, _ := proc.Call(dpiAwarenessContextPerMonitorAwareV2)
-		if ret != 0 {
-			return
-		}
-	}
-	// Fallback for older Windows versions where the per-monitor v2 API is absent.
-	if proc := user32.NewProc("SetProcessDPIAware"); proc.Find() == nil {
-		proc.Call()
-	}
-}
-
-// initialWindowSize leaves room for the complete native title bar and taskbar
-// on smaller displays instead of creating a fixed 1440x900 window off-screen.
-func initialWindowSize() (int, int) {
-	user32 := syscall.NewLazyDLL("user32.dll")
-	get := user32.NewProc("GetSystemMetrics")
-	screenW, _, _ := get.Call(0) // SM_CXSCREEN
-	screenH, _, _ := get.Call(1) // SM_CYSCREEN
-	w, h := 1440, 900
-	if screenW > 0 && w > int(screenW*9/10) {
-		w = int(screenW * 9 / 10)
-	}
-	if screenH > 0 && h > int(screenH*85/100) {
-		h = int(screenH * 85 / 100)
-	}
-	if w < 900 {
-		w = 900
-	}
-	if h < 600 {
-		h = 600
-	}
-	return w, h
-}
-
-// ensureNativeWindowFrame explicitly retains the standard Windows caption,
-// system menu, resize border, and Minimize/Maximize buttons. It then asks
-// Windows to recalculate the non-client frame after DPI awareness is applied.
-func ensureNativeWindowFrame(hwnd uintptr, user32 *syscall.LazyDLL) {
-	const (
-		gwlStyle        = ^uintptr(15) // -16
-		wsOverlapped    = uintptr(0x00CF0000)
-		swpNoSize       = uintptr(0x0001)
-		swpNoMove       = uintptr(0x0002)
-		swpNoZOrder     = uintptr(0x0004)
-		swpNoActivate   = uintptr(0x0010)
-		swpFrameChanged = uintptr(0x0020)
-	)
-	getStyle := user32.NewProc("GetWindowLongPtrW")
-	setStyle := user32.NewProc("SetWindowLongPtrW")
-	style, _, _ := getStyle.Call(hwnd, gwlStyle)
-	setStyle.Call(hwnd, gwlStyle, style|wsOverlapped)
-	user32.NewProc("SetWindowPos").Call(
-		hwnd, 0, 0, 0, 0, 0,
-		swpNoSize|swpNoMove|swpNoZOrder|swpNoActivate|swpFrameChanged,
-	)
 }
 
 func showAppWindow(hwnd uintptr, user32 *syscall.LazyDLL) {

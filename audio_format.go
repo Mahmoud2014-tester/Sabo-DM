@@ -16,7 +16,7 @@ func audioFormatArgs(format string) ([]string, error) {
 		return nil, fmt.Errorf("%s conversion requires FFmpeg and FFprobe. Open Settings → Install FFmpeg, then retry", strings.ToUpper(format))
 	}
 	wanted := map[string]string{
-		"mp3": "MP3", "m4a": "M4A", "aac": "AAC", "opus": "Opus", "wav": "WAV", "flac": "FLAC",
+		"mp3": "MP3", "m4a": "M4A", "aac": "AAC", "opus": "Opus", "wav": "WAV", "flac": "FLAC", "ogg": "OGG (Vorbis)",
 	}
 	label, ok := wanted[format]
 	if !ok {
