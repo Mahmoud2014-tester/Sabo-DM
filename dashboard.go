@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,20 +22,21 @@ const dashboardAddr = "127.0.0.1:19346"
 var dashboardFiles embed.FS
 
 type dashboardItem struct {
-	Index     int                `json:"index"`
-	Name      string             `json:"name"`
-	URL       string             `json:"url"`
-	Kind      string             `json:"kind"`
-	Status    string             `json:"status"`
-	Done      int64              `json:"done"`
-	Total     int64              `json:"total"`
-	Speed     float64            `json:"speed"`
-	Percent   float64            `json:"percent"`
-	Segments  []dashboardSegment `json:"segments"`
-	Queue     string             `json:"queue"`
-	Category  string             `json:"category"`
-	Path      string             `json:"path"`
-	Directory string             `json:"directory"`
+	Index      int                `json:"index"`
+	Name       string             `json:"name"`
+	URL        string             `json:"url"`
+	Kind       string             `json:"kind"`
+	Status     string             `json:"status"`
+	Done       int64              `json:"done"`
+	Total      int64              `json:"total"`
+	Speed      float64            `json:"speed"`
+	Percent    float64            `json:"percent"`
+	Segments   []dashboardSegment `json:"segments"`
+	Queue      string             `json:"queue"`
+	Category   string             `json:"category"`
+	MediaLabel string             `json:"mediaLabel"`
+	Path       string             `json:"path"`
+	Directory  string             `json:"directory"`
 }
 
 type dashboardSegment struct {
@@ -63,6 +65,17 @@ type toolJob struct {
 
 var toolJobMu sync.Mutex
 var activeToolJob toolJob
+
+type audioConversionJob struct {
+	State    string  `json:"state"`
+	Name     string  `json:"name,omitempty"`
+	Output   string  `json:"output,omitempty"`
+	Error    string  `json:"error,omitempty"`
+	Progress float64 `json:"progress"`
+}
+
+var audioJobMu sync.Mutex
+var activeAudioJob audioConversionJob
 
 func launchToolJob(name string, work func() error) bool {
 	toolJobMu.Lock()
@@ -131,7 +144,7 @@ func startDashboardServer(q *Queue, saveDir string, dispatch func(func()), shutd
 					}
 					segments = append(segments, dashboardSegment{Done: seg.Done, Total: total, Pct: segmentPct})
 				}
-				items = append(items, dashboardItem{Index: i, Name: name, URL: it.URL, Kind: it.Kind, Status: it.Status, Done: it.Done, Total: it.Total, Speed: it.Speed, Percent: pct, Segments: segments, Queue: it.Queue, Category: it.Category, Path: it.Path, Directory: it.Dir})
+				items = append(items, dashboardItem{Index: i, Name: name, URL: it.URL, Kind: it.Kind, Status: it.Status, Done: it.Done, Total: it.Total, Speed: it.Speed, Percent: pct, Segments: segments, Queue: it.Queue, Category: it.Category, MediaLabel: it.VLabel, Path: it.Path, Directory: it.Dir})
 			}
 			ch <- items
 		})
@@ -292,6 +305,102 @@ func startDashboardServer(q *Queue, saveDir string, dispatch func(func()), shutd
 		case <-time.After(3 * time.Second):
 			http.Error(w, "UI thread timeout", 503)
 		}
+	})
+	mux.HandleFunc("/api/audio/extract", func(w http.ResponseWriter, r *http.Request) {
+		if !guard(w, r) {
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", 405)
+			return
+		}
+		var req struct {
+			Path   string `json:"path"`
+			Format string `json:"format"`
+			Rate   string `json:"rate"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32<<10)).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON", 400)
+			return
+		}
+		if _, err := ffmpegReady(); err != nil {
+			http.Error(w, "FFmpeg and FFprobe are required. Install them from Settings.", 400)
+			return
+		}
+		var preset audioPreset
+		valid := false
+		for _, candidate := range audioPresets() {
+			if candidate.Format == req.Format && candidate.Rate == req.Rate {
+				preset = candidate
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			http.Error(w, "unsupported audio format or quality", 400)
+			return
+		}
+		ch := make(chan error, 1)
+		dispatch(func() {
+			var source *Item
+			for _, it := range q.Items {
+				if it.Path == req.Path && it.Status == stDone {
+					source = it
+					break
+				}
+			}
+			if source == nil {
+				ch <- fmt.Errorf("completed source file not found")
+				return
+			}
+			if !hasAudioStream(source.Path) {
+				ch <- fmt.Errorf("the selected file has no readable audio stream")
+				return
+			}
+			ch <- nil
+		})
+		select {
+		case err := <-ch:
+			if err != nil {
+				http.Error(w, err.Error(), 400)
+				return
+			}
+		case <-time.After(3 * time.Second):
+			http.Error(w, "UI thread timeout", 503)
+			return
+		}
+		audioJobMu.Lock()
+		if activeAudioJob.State == "running" {
+			audioJobMu.Unlock()
+			http.Error(w, "another audio conversion is already running", 409)
+			return
+		}
+		activeAudioJob = audioConversionJob{State: "running", Name: filepath.Base(req.Path), Progress: 0}
+		audioJobMu.Unlock()
+		go func(path string, p audioPreset) {
+			out, err := convertAudioFile(context.Background(), path, p, func(percent float64) { audioJobMu.Lock(); activeAudioJob.Progress = percent; audioJobMu.Unlock() })
+			audioJobMu.Lock()
+			defer audioJobMu.Unlock()
+			if err != nil {
+				activeAudioJob.State = "failed"
+				activeAudioJob.Error = err.Error()
+			} else {
+				activeAudioJob.State = "completed"
+				activeAudioJob.Output = out
+				activeAudioJob.Progress = 100
+			}
+		}(req.Path, preset)
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"ok":true,"state":"running"}`))
+	})
+	mux.HandleFunc("/api/audio/status", func(w http.ResponseWriter, r *http.Request) {
+		if !guard(w, r) {
+			return
+		}
+		audioJobMu.Lock()
+		snapshot := activeAudioJob
+		audioJobMu.Unlock()
+		_ = json.NewEncoder(w).Encode(snapshot)
 	})
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		if !guard(w, r) {

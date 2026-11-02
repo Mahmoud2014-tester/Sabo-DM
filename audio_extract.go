@@ -20,7 +20,7 @@ type audioPreset struct {
 func audioPresets() []audioPreset {
 	var out []audioPreset
 	for _, f := range []struct{ label, ext string }{
-		{"MP3", "mp3"}, {"M4A", "m4a"}, {"AAC", "aac"}, {"Opus", "opus"}, {"OGG (Vorbis)", "ogg"},
+		{"MP3", "mp3"}, {"M4A", "m4a"}, {"AAC", "aac"}, {"Opus", "opus"}, {"OGG (Vorbis)", "ogg"}, {"WMA", "wma"},
 	} {
 		for _, r := range []string{"Best quality (VBR)", "128 kbps", "192 kbps", "320 kbps"} {
 			out = append(out, audioPreset{Label: f.label + " — " + r, Format: f.ext, Rate: r})
@@ -103,6 +103,8 @@ func convertAudioFile(ctx context.Context, input string, preset audioPreset, pro
 		args = append(args, "-c:a", "pcm_s16le")
 	case "flac":
 		args = append(args, "-c:a", "flac")
+	case "wma":
+		args = append(args, "-c:a", "wmav2", "-f", "asf")
 	default:
 		return "", fmt.Errorf("unsupported audio format %q", ext)
 	}

@@ -6,6 +6,11 @@ const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 let downloads = [];
 let seenDownloadURLs = null;
+let initialRefreshDone = false;
+let pendingAudioSource = null;
+let audioJobPoll = null;
+const observedDone = new Set();
+const audioPrompted = new Set();
 let noticeTimer = null;
 let meta = { queues: ['Default'], categories: ['Files', 'Videos', 'Music', 'Documents', 'Torrents'], version: '—' };
 let filter = 'all';
@@ -25,14 +30,14 @@ const I18N = {
     "QUEUES":"قوائم الانتظار","CATEGORIES":"التصنيفات","All categories":"كل التصنيفات","Music":"الموسيقى","Videos":"الفيديوهات","Documents":"المستندات","Torrents":"التورنت",
     "ACTIVE DOWNLOADS":"التنزيلات النشطة","Currently transferring":"جارٍ النقل","Waiting for a free slot":"في انتظار دورها","Successfully downloaded":"تم تنزيلها بنجاح","DOWNLOAD SPEED":"سرعة التنزيل","Current combined throughput":"السرعة الإجمالية الحالية",
     "Add new download":"إضافة تنزيل جديد","Paste a URL, magnet link, or batch of links":"أدخل رابطًا أو رابط Magnet أو عدة روابط","＋ NEW TASK":"＋ مهمة جديدة","＋ Add download":"＋ إضافة تنزيل",
-    "Media output":"صيغة الوسائط","Video (best available)":"فيديو (أفضل جودة متاحة)","Audio · MP3":"صوت · MP3","Audio · M4A":"صوت · M4A","Audio · AAC":"صوت · AAC","Audio · Opus":"صوت · Opus","Audio · WAV":"صوت · WAV","Audio · FLAC":"صوت · FLAC","Audio · Original format":"صوت · الصيغة الأصلية",
+    "Media output":"صيغة الوسائط","Video (best available)":"فيديو (أفضل جودة متاحة)","Audio · MP3":"صوت · MP3","Audio · M4A":"صوت · M4A","Audio · AAC":"صوت · AAC","Audio · Opus":"صوت · Opus","Audio · OGG":"صوت · OGG","Audio · WAV":"صوت · WAV","Audio · FLAC":"صوت · FLAC","Audio · Original format":"صوت · الصيغة الأصلية",
     "Audio output selection applies to supported video/media page URLs. Conversion requires FFmpeg.":"اختيار صيغة الصوت يعمل مع صفحات الفيديو والوسائط المدعومة. التحويل يتطلب FFmpeg.",
     "↳ Supports HTTP / HTTPS / magnet links":"↳ يدعم روابط HTTP وHTTPS وMagnet","Save to:":"الحفظ في:",
     "Date added ↓":"تاريخ الإضافة ↓","Name A–Z":"الاسم أ–ي","Clear filters":"مسح عوامل التصفية","Ⅱ Pause all":"Ⅱ إيقاف الكل مؤقتًا","Clear finished":"مسح المكتمل",
     "FILE NAME":"اسم الملف","SIZE":"الحجم","PROGRESS":"التقدم","STATUS":"الحالة","ACTIONS":"الإجراءات",
     "Download details":"تفاصيل التنزيل","Select a download to see its live transfer details":"اختر تنزيلًا لعرض تفاصيل النقل المباشرة","ENGINE SYNC":"مزامنة المحرك","Transfers":"عمليات النقل","Progress":"التقدم","Engine":"المحرك","Connected":"متصل","Parallel downloads":"التنزيلات المتوازية","Speed limit":"حد السرعة","Unlimited":"بلا حدود",
     "Sabo DM Settings":"إعدادات Sabo DM","Application tools, updates and appearance":"أدوات التطبيق والتحديثات والمظهر","Appearance":"المظهر","Theme":"السمة","Dark":"داكن","Light":"فاتح","Language":"اللغة","English (Primary)":"الإنجليزية (أساسية)","العربية":"العربية","Français":"الفرنسية",
-    "Media tools":"أدوات الوسائط","Checking… — required for MP3, AAC, Opus, WAV and FLAC conversion.":"جارٍ التحقق… مطلوبة للتحويل إلى MP3 وAAC وOpus وWAV وFLAC.","Install FFmpeg":"تثبيت FFmpeg","yt-dlp":"yt-dlp","Install / Update":"تثبيت / تحديث",
+    "Media tools":"أدوات الوسائط","Checking… — required for MP3, AAC, Opus, OGG, WAV and FLAC conversion.":"جارٍ التحقق… مطلوبة للتحويل إلى MP3 وAAC وOpus وWAV وFLAC.","Install FFmpeg":"تثبيت FFmpeg","yt-dlp":"yt-dlp","Install / Update":"تثبيت / تحديث",
     "Software update":"تحديث البرنامج","Update Version":"تحديث الإصدار","Check GitHub for the latest stable release.":"تحقق من GitHub لمعرفة أحدث إصدار مستقر.","Check for updates":"التحقق من وجود تحديثات","Download and install update":"تنزيل التحديث وتثبيته","View release notes on GitHub ↗":"عرض ملاحظات الإصدار على GitHub ↗","Done":"تم",
     "Local desktop engine":"محرك سطح المكتب المحلي","All download commands are handled by the Go engine":"يتولى محرك Go جميع أوامر التنزيل","Create download queue":"إنشاء قائمة تنزيل","Give this queue a name. You can assign downloads to it from the dashboard.":"أدخل اسم القائمة. يمكنك إسناد التنزيلات إليها من لوحة التحكم.","Queue name":"اسم القائمة","Cancel":"إلغاء","Create queue":"إنشاء قائمة",
     "You are running the latest release ({version}).":"أنت تستخدم أحدث إصدار ({version}).",
@@ -47,14 +52,14 @@ const I18N = {
     "QUEUES":"FILES D’ATTENTE","CATEGORIES":"CATÉGORIES","All categories":"Toutes les catégories","Music":"Musique","Videos":"Vidéos","Documents":"Documents","Torrents":"Torrents",
     "ACTIVE DOWNLOADS":"TÉLÉCHARGEMENTS ACTIFS","Currently transferring":"Transfert en cours","Waiting for a free slot":"En attente d’un emplacement","Successfully downloaded":"Téléchargés avec succès","DOWNLOAD SPEED":"VITESSE DE TÉLÉCHARGEMENT","Current combined throughput":"Débit total actuel",
     "Add new download":"Ajouter un téléchargement","Paste a URL, magnet link, or batch of links":"Collez une URL, un lien magnet ou plusieurs liens","＋ NEW TASK":"＋ NOUVELLE TÂCHE","＋ Add download":"＋ Ajouter",
-    "Media output":"Format média","Video (best available)":"Vidéo (meilleure qualité)","Audio · MP3":"Audio · MP3","Audio · M4A":"Audio · M4A","Audio · AAC":"Audio · AAC","Audio · Opus":"Audio · Opus","Audio · WAV":"Audio · WAV","Audio · FLAC":"Audio · FLAC","Audio · Original format":"Audio · Format original",
+    "Media output":"Format média","Video (best available)":"Vidéo (meilleure qualité)","Audio · MP3":"Audio · MP3","Audio · M4A":"Audio · M4A","Audio · AAC":"Audio · AAC","Audio · Opus":"Audio · Opus","Audio · OGG":"Audio · OGG","Audio · WAV":"Audio · WAV","Audio · FLAC":"Audio · FLAC","Audio · Original format":"Audio · Format original",
     "Audio output selection applies to supported video/media page URLs. Conversion requires FFmpeg.":"Le format audio s’applique aux pages vidéo/média compatibles. La conversion nécessite FFmpeg.",
     "↳ Supports HTTP / HTTPS / magnet links":"↳ Liens HTTP / HTTPS / magnet acceptés","Save to:":"Enregistrer dans :",
     "Date added ↓":"Date d’ajout ↓","Name A–Z":"Nom A–Z","Clear filters":"Effacer les filtres","Ⅱ Pause all":"Ⅱ Tout suspendre","Clear finished":"Effacer les terminés",
     "FILE NAME":"NOM DU FICHIER","SIZE":"TAILLE","PROGRESS":"PROGRESSION","STATUS":"ÉTAT","ACTIONS":"ACTIONS",
     "Download details":"Détails du téléchargement","Select a download to see its live transfer details":"Sélectionnez un téléchargement pour voir son transfert","ENGINE SYNC":"SYNCHRONISATION","Transfers":"Transferts","Progress":"Progression","Engine":"Moteur","Connected":"Connecté","Parallel downloads":"Téléchargements parallèles","Speed limit":"Limite de vitesse","Unlimited":"Illimitée",
     "Sabo DM Settings":"Paramètres Sabo DM","Application tools, updates and appearance":"Outils, mises à jour et apparence","Appearance":"Apparence","Theme":"Thème","Dark":"Sombre","Light":"Clair","Language":"Langue","English (Primary)":"Anglais (principal)","العربية":"Arabe","Français":"Français",
-    "Media tools":"Outils multimédias","Checking… — required for MP3, AAC, Opus, WAV and FLAC conversion.":"Vérification… requis pour convertir en MP3, AAC, Opus, WAV et FLAC.","Install FFmpeg":"Installer FFmpeg","yt-dlp":"yt-dlp","Install / Update":"Installer / Mettre à jour",
+    "Media tools":"Outils multimédias","Checking… — required for MP3, AAC, Opus, OGG, WAV and FLAC conversion.":"Vérification… requis pour convertir en MP3, AAC, Opus, WAV et FLAC.","Install FFmpeg":"Installer FFmpeg","yt-dlp":"yt-dlp","Install / Update":"Installer / Mettre à jour",
     "Software update":"Mise à jour du logiciel","Update Version":"Mettre à jour la version","Check GitHub for the latest stable release.":"Rechercher la dernière version stable sur GitHub.","Check for updates":"Rechercher des mises à jour","Download and install update":"Télécharger et installer","View release notes on GitHub ↗":"Voir les notes de version sur GitHub ↗","Done":"Terminé",
     "Local desktop engine":"Moteur local","All download commands are handled by the Go engine":"Toutes les commandes sont gérées par le moteur Go","Create download queue":"Créer une file d’attente","Give this queue a name. You can assign downloads to it from the dashboard.":"Nommez cette file. Vous pourrez y affecter des téléchargements.","Queue name":"Nom de la file","Cancel":"Annuler","Create queue":"Créer",
     "You are running the latest release ({version}).":"Vous utilisez la dernière version ({version}).",
@@ -269,6 +274,16 @@ async function refresh() {
       if (fresh.length) showDownloadNotice(fresh[0]);
     }
     seenDownloadURLs = new Set(nextDownloads.map(item => item.url).filter(Boolean));
+    for (const item of nextDownloads) {
+      const key = item.path || '';
+      const isAudioOnlyJob = String(item.mediaLabel || '').toLowerCase().startsWith('audio');
+      const isMediaFile = /\.(mp4|m4v|mkv|webm|mov|avi|mp3|m4a|aac|ogg|opus|wav|flac|wma)$/i.test(key);
+      if (item.status === 'Done' && key && isMediaFile && !isAudioOnlyJob && !observedDone.has(key)) {
+        observedDone.add(key);
+        if (initialRefreshDone && !audioPrompted.has(key)) offerAudioExtraction(item);
+      }
+    }
+    initialRefreshDone = true;
     downloads = nextDownloads;
     meta = { ...meta, ...(info || {}) };
     $('#engineStatus').textContent = 'Connected to Sabo DM';
@@ -399,7 +414,7 @@ async function installUpdate() {
 async function refreshCapabilities() {
   try {
     const info = await request('/capabilities');
-    $('#ffmpegStatus').textContent = info.ffmpegReady ? 'FFmpeg and FFprobe are installed and working.' : 'Required for MP3, M4A, AAC, Opus, WAV and FLAC conversion.';
+    $('#ffmpegStatus').textContent = info.ffmpegReady ? 'FFmpeg and FFprobe are installed and working.' : 'Required for MP3, M4A, AAC, Opus, OGG, WAV and FLAC conversion.';
     $('#installFFmpeg').textContent = info.ffmpegReady ? 'Reinstall / Repair' : 'Install FFmpeg';
     $('#ytdlpStatus').textContent = info.ytDlpReady ? 'yt-dlp is installed.' : 'Required for supported video and media sites.';
     $('#updateYtDlp').textContent = info.ytDlpReady ? 'Update yt-dlp' : 'Install yt-dlp';
@@ -437,7 +452,52 @@ async function startToolJob(name, path) {
   }
 }
 
+function offerAudioExtraction(item) {
+  if (pendingAudioSource || !item?.path) return;
+  pendingAudioSource = item;
+  $('#audioExtractSource').textContent = `${item.name || item.path} — original file will be preserved.`;
+  $('#audioExtractProgress').textContent = 'Would you like to save a separate audio file?';
+  $('#audioExtractYes').disabled = false;
+  $('#audioExtractNo').disabled = false;
+  $('#audioExtractPanel').classList.remove('hidden');
+}
+function closeAudioExtraction() {
+  if (pendingAudioSource?.path) audioPrompted.add(pendingAudioSource.path);
+  pendingAudioSource = null;
+  $('#audioExtractPanel').classList.add('hidden');
+}
+async function startAudioExtraction() {
+  if (!pendingAudioSource?.path) return;
+  const [format, rate] = $('#audioExtractPreset').value.split('|');
+  $('#audioExtractYes').disabled = true; $('#audioExtractNo').disabled = true;
+  $('#audioExtractProgress').textContent = 'Starting FFmpeg…';
+  try {
+    await request('/audio/extract', {method:'POST', body:JSON.stringify({path:pendingAudioSource.path, format, rate})});
+    const sourcePath = pendingAudioSource.path;
+    audioPrompted.add(sourcePath);
+    if (audioJobPoll) clearInterval(audioJobPoll);
+    audioJobPoll = setInterval(async () => {
+      try {
+        const job = await request('/audio/status');
+        if (job.state === 'running') { $('#audioExtractProgress').textContent = `Converting audio… ${Number(job.progress || 0).toFixed(0)}%`; return; }
+        clearInterval(audioJobPoll); audioJobPoll = null;
+        $('#audioExtractProgress').textContent = job.state === 'completed' ? `Audio saved: ${job.output}` : (job.error || 'Audio conversion failed.');
+        $('#audioExtractNo').disabled = false;
+        $('#audioExtractYes').textContent = 'Close';
+        $('#audioExtractYes').disabled = false;
+        if (job.state === 'completed') toast('Audio extraction completed');
+      } catch (_) { /* keep polling while engine is reachable */ }
+    }, 700);
+  } catch (error) {
+    $('#audioExtractProgress').textContent = error.message || 'Could not start audio extraction.';
+    $('#audioExtractNo').disabled = false; $('#audioExtractYes').disabled = false;
+  }
+}
+
 function bindEvents() {
+  $('#audioExtractClose').addEventListener('click', closeAudioExtraction);
+  $('#audioExtractNo').addEventListener('click', closeAudioExtraction);
+  $('#audioExtractYes').addEventListener('click', () => { if ($('#audioExtractYes').textContent === 'Close') { $('#audioExtractYes').textContent = 'Extract audio'; closeAudioExtraction(); } else startAudioExtraction(); });
   $('#downloadNoticeClose')?.addEventListener('click', () => $('#downloadNotice').classList.remove('show'));
   $('#add').addEventListener('click', addURLs);
   $('#url').addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') addURLs(); });

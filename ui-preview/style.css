@@ -158,3 +158,5 @@ main{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behav
 .notice-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.notice-copy strong{font-size:13px;color:#fff}.notice-copy span{font-size:12px;color:#ff555f}.notice-copy small{font-size:11px;color:#b5b5bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .download-notice button{width:26px;height:26px;border:1px solid #414149;border-radius:7px;background:#24242b;color:#eee;cursor:pointer}
 .brand-logo{display:block;flex:none;background:#08090c;border-radius:50%;object-fit:contain;image-rendering:auto}
+
+.audio-progress{padding:10px 0;color:var(--muted);font-size:12px}.setting-row select{max-width:100%}
