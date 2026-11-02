@@ -19,13 +19,20 @@ type audioPreset struct {
 
 func audioPresets() []audioPreset {
 	var out []audioPreset
-	for _, f := range []struct{ label, ext string }{
-		{"MP3", "mp3"}, {"M4A", "m4a"}, {"AAC", "aac"}, {"Opus", "opus"}, {"OGG (Vorbis)", "ogg"}, {"WMA", "wma"},
-	} {
-		for _, r := range []string{"Best quality (VBR)", "128 kbps", "192 kbps", "320 kbps"} {
-			out = append(out, audioPreset{Label: f.label + " — " + r, Format: f.ext, Rate: r})
+	addRates := func(label, ext string, rates ...string) {
+		for _, rate := range rates {
+			out = append(out, audioPreset{Label: label + " — " + rate, Format: ext, Rate: rate})
 		}
 	}
+	// Only advertise quality modes that the selected FFmpeg encoder can
+	// implement truthfully. AAC and WMA use explicit bitrates, not a VBR
+	// quality scale; MP3 and Vorbis expose their encoder quality modes.
+	addRates("MP3", "mp3", "Best quality (VBR)", "128 kbps", "192 kbps", "320 kbps")
+	addRates("M4A", "m4a", "256 kbps", "128 kbps", "192 kbps", "320 kbps")
+	addRates("AAC", "aac", "256 kbps", "128 kbps", "192 kbps", "320 kbps")
+	addRates("Opus", "opus", "160 kbps", "128 kbps", "192 kbps", "256 kbps")
+	addRates("OGG (Vorbis)", "ogg", "Best quality (VBR)", "128 kbps", "192 kbps")
+	addRates("WMA", "wma", "128 kbps", "192 kbps", "320 kbps")
 	out = append(out, audioPreset{Label: "WAV — Lossless", Format: "wav"}, audioPreset{Label: "FLAC — Lossless", Format: "flac"})
 	return out
 }
@@ -75,16 +82,32 @@ func convertAudioFile(ctx context.Context, input string, preset audioPreset, pro
 	if !hasAudioStream(input) {
 		return "", fmt.Errorf("the downloaded file has no readable audio stream")
 	}
-	ext := preset.Format
+	ext := strings.ToLower(strings.TrimSpace(preset.Format))
+	switch ext {
+	case "mp3", "m4a", "aac", "opus", "ogg", "wav", "flac", "wma":
+	default:
+		return "", fmt.Errorf("unsupported audio format %q", ext)
+	}
 	base := strings.TrimSuffix(input, filepath.Ext(input))
-	output := base + "_audio." + ext
-	if _, err := os.Stat(output); err == nil {
-		for n := 2; ; n++ {
-			candidate := fmt.Sprintf("%s_audio_%d.%s", base, n, ext)
-			if _, e := os.Stat(candidate); os.IsNotExist(e) {
-				output = candidate
-				break
+	// Reserve a unique destination atomically. A stat-then-write check can race
+	// with another process; O_EXCL guarantees we never claim an existing file.
+	var output string
+	for n := 1; ; n++ {
+		candidate := base + "_audio." + ext
+		if n > 1 {
+			candidate = fmt.Sprintf("%s_audio_%d.%s", base, n, ext)
+		}
+		f, reserveErr := os.OpenFile(candidate, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if reserveErr == nil {
+			if closeErr := f.Close(); closeErr != nil {
+				_ = os.Remove(candidate)
+				return "", closeErr
 			}
+			output = candidate
+			break
+		}
+		if !os.IsExist(reserveErr) {
+			return "", fmt.Errorf("cannot reserve audio output file: %w", reserveErr)
 		}
 	}
 	args := []string{"-hide_banner", "-y", "-i", input, "-map", "0:a:0", "-vn"}
@@ -106,23 +129,35 @@ func convertAudioFile(ctx context.Context, input string, preset audioPreset, pro
 	case "wma":
 		args = append(args, "-c:a", "wmav2", "-f", "asf")
 	default:
+		_ = os.Remove(output)
 		return "", fmt.Errorf("unsupported audio format %q", ext)
 	}
 	if preset.Rate != "" && preset.Rate != "Best quality (VBR)" {
 		rate := strings.TrimSuffix(preset.Rate, " kbps") + "k"
 		args = append(args, "-b:a", rate)
-	} else if ext == "mp3" || ext == "ogg" || ext == "opus" {
-		args = append(args, "-q:a", "0")
+	} else {
+		switch ext {
+		case "mp3", "ogg":
+			args = append(args, "-q:a", "0")
+		case "m4a", "aac":
+			args = append(args, "-b:a", "256k")
+		case "opus":
+			args = append(args, "-b:a", "160k")
+		case "wma":
+			args = append(args, "-b:a", "192k")
+		}
 	}
 	args = append(args, "-progress", "pipe:1", "-nostats", output)
 	cmd := hidden(exec.CommandContext(ctx, ffmpeg, args...))
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		_ = os.Remove(output)
 		return "", err
 	}
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
+		_ = os.Remove(output)
 		return "", err
 	}
 	duration := mediaDuration(input)
@@ -154,6 +189,11 @@ func convertAudioFile(ctx context.Context, input string, preset audioPreset, pro
 			msg = err.Error()
 		}
 		return "", fmt.Errorf("FFmpeg conversion failed: %s", msg)
+	}
+	st, statErr := os.Stat(output)
+	if statErr != nil || st.IsDir() || st.Size() == 0 || !hasAudioStream(output) {
+		_ = os.Remove(output)
+		return "", fmt.Errorf("FFmpeg finished but the output file is missing, empty, or has no readable audio stream")
 	}
 	if progress != nil {
 		progress(100)
