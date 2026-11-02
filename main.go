@@ -1014,6 +1014,48 @@ func main() {
 			}
 			ni.ShowInfo("Download complete", name)
 		}
+		if it.Path == "" || !hasAudioStream(it.Path) {
+			return
+		}
+		// A video-only extraction job already contains audio output; do not prompt twice.
+		for _, arg := range it.VArgs {
+			if arg == "-x" {
+				return
+			}
+		}
+		if int(walk.MsgBox(mw, "Extract audio?", "Would you like to save a separate audio file from this download? The original file will be preserved.", walk.MsgBoxYesNo|walk.MsgBoxIconQuestion)) != int(walk.DlgCmdYes) {
+			return
+		}
+		if _, err := ffmpegReady(); err != nil {
+			walk.MsgBox(mw, "FFmpeg required", "Install FFmpeg and FFprobe from Settings before extracting audio.", walk.MsgBoxIconWarning)
+			return
+		}
+		presets := audioPresets()
+		options := make([]VideoOpt, len(presets))
+		for i, p := range presets {
+			options[i] = VideoOpt{Label: p.Label}
+		}
+		choice := askQuality("Choose audio format and quality", "The audio will be saved separately; the original download will not be changed.", options)
+		if choice < 0 || choice >= len(presets) {
+			return
+		}
+		selected := presets[choice]
+		it.Status = "Extracting audio..."
+		q.changed(it)
+		go func(item *Item) {
+			out, err := convertAudioFile(context.Background(), item.Path, selected, func(p float64) {
+				q.post(func() { item.Status = fmt.Sprintf("Extracting audio... %.0f%%", p); q.changed(item) })
+			})
+			q.post(func() {
+				if err != nil {
+					item.Status = "Audio extraction error: " + err.Error()
+				} else {
+					item.Status = "Done (audio saved: " + filepath.Base(out) + ")"
+				}
+				q.changed(item)
+				q.save()
+			})
+		}(it)
 	}
 	mw.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
 		if quitting || ni == nil {
