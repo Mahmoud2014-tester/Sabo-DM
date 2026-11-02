@@ -37,7 +37,7 @@ const I18N = {
     "↳ Supports HTTP / HTTPS / magnet links":"↳ يدعم روابط HTTP وHTTPS وMagnet","Save to:":"الحفظ في:",
     "Date added ↓":"تاريخ الإضافة ↓","Name A–Z":"الاسم أ–ي","Clear filters":"مسح عوامل التصفية","Ⅱ Pause all":"Ⅱ إيقاف الكل مؤقتًا","Clear finished":"مسح المكتمل",
     "FILE NAME":"اسم الملف","SIZE":"الحجم","PROGRESS":"التقدم","STATUS":"الحالة","ACTIONS":"الإجراءات",
-    "Download details":"تفاصيل التنزيل","Live downloads":"التنزيلات المباشرة","File type":"نوع الملف","Destination":"مكان الحفظ","Remaining":"المتبقي","Pause":"إيقاف مؤقت","Resume":"استئناف","Cancel download":"إلغاء التنزيل","Open file":"فتح الملف","Open folder":"فتح المجلد","Cancel":"إلغاء","Select a download to see its live transfer details":"اختر تنزيلًا لعرض تفاصيل النقل المباشرة","ENGINE SYNC":"مزامنة المحرك","Transfers":"عمليات النقل","Progress":"التقدم","Engine":"المحرك","Connected":"متصل","Parallel downloads":"التنزيلات المتوازية","Speed limit":"حد السرعة","Unlimited":"بلا حدود",
+    "Download details":"تفاصيل التنزيل","Live downloads":"التنزيلات المباشرة","File type":"نوع الملف","Destination":"مكان الحفظ","Destination folder":"مجلد الحفظ","Destination file":"ملف الحفظ","Pausing…":"جارٍ الإيقاف مؤقتًا…","Remaining":"المتبقي","Pause":"إيقاف مؤقت","Resume":"استئناف","Cancel download":"إلغاء التنزيل","Open file":"فتح الملف","Open folder":"فتح المجلد","Cancel":"إلغاء","Select a download to see its live transfer details":"اختر تنزيلًا لعرض تفاصيل النقل المباشرة","ENGINE SYNC":"مزامنة المحرك","Transfers":"عمليات النقل","Progress":"التقدم","Engine":"المحرك","Connected":"متصل","Parallel downloads":"التنزيلات المتوازية","Speed limit":"حد السرعة","Unlimited":"بلا حدود",
     "Sabo DM Settings":"إعدادات Sabo DM","Application tools, updates and appearance":"أدوات التطبيق والتحديثات والمظهر","Appearance":"المظهر","Theme":"السمة","Dark":"داكن","Light":"فاتح","Language":"اللغة","English (Primary)":"الإنجليزية (أساسية)","العربية":"العربية","Français":"الفرنسية",
     "Media tools":"أدوات الوسائط","Checking… — required for MP3, AAC, Opus, OGG, WAV and FLAC conversion.":"جارٍ التحقق… مطلوبة للتحويل إلى MP3 وAAC وOpus وWAV وFLAC.","Install FFmpeg":"تثبيت FFmpeg","yt-dlp":"yt-dlp","Install / Update":"تثبيت / تحديث",
     "Software update":"تحديث البرنامج","Update Version":"تحديث الإصدار","Check GitHub for the latest stable release.":"تحقق من GitHub لمعرفة أحدث إصدار مستقر.","Check for updates":"التحقق من وجود تحديثات","Download and install update":"تنزيل التحديث وتثبيته","View release notes on GitHub ↗":"عرض ملاحظات الإصدار على GitHub ↗","Done":"تم",
@@ -136,7 +136,8 @@ function downloadState(item) {
   const raw = String(item.status || '').toLowerCase();
   if (raw === 'done' || raw === 'completed') return 'Completed';
   if (raw.includes('error') || raw.includes('failed')) return 'Failed';
-  if (raw === 'downloading' || raw === 'pausing...') return 'Downloading';
+  if (raw === 'downloading') return 'Downloading';
+  if (raw === 'pausing...') return 'Pausing';
   if (raw === 'queued') return 'Queued';
   return 'Paused';
 }
@@ -296,13 +297,8 @@ function renderTrackers() {
     const previous = trackerLastStates.get(key);
     if (state !== 'Completed') trackerLastStates.set(key, state);
     if (trackerDismissed.has(key)) continue;
-    if (state === 'Completed') {
-      if (previous && previous !== 'Completed') {
-        if (!trackerLastStates.has(`${key}|completedAt`)) trackerLastStates.set(`${key}|completedAt`, now);
-      }
-      const completedAt = trackerLastStates.get(`${key}|completedAt`);
-      if (!completedAt || now - completedAt > 6500) continue;
-    }
+    // Keep completed/failed downloads in the tracker until the user dismisses
+    // them or clears finished items. Destination file actions must remain usable.
     visible.push(item);
   }
   const active = visible.filter(item => downloadState(item) !== 'Completed');
@@ -314,11 +310,12 @@ function renderTrackers() {
     const index = Number(item.index);
     const percent = Math.max(0, Math.min(100, Number(item.percent) || 0));
     const paused = status === 'Paused';
+    const pausing = status === 'Pausing';
     const done = status === 'Completed';
     const failed = status === 'Failed';
     const primary = done
       ? `<button data-track-act="open-file" data-id="${index}" data-url="${escapeHTML(item.url || '')}" ${item.path ? '' : 'disabled'}>${tr('Open file')}</button>`
-      : `<button data-track-act="${paused || status === 'Queued' ? 'start' : 'pause'}" data-id="${index}" data-url="${escapeHTML(item.url || '')}">${paused || status === 'Queued' ? tr('Resume') : tr('Pause')}</button>`;
+      : `<button data-track-act="${paused || status === 'Queued' ? 'start' : 'pause'}" data-id="${index}" data-url="${escapeHTML(item.url || '')}" ${pausing ? 'disabled' : ''}>${pausing ? tr('Pausing…') : (paused || status === 'Queued' ? tr('Resume') : tr('Pause'))}</button>`;
     const cancel = done ? '' : `<button class="tracker-cancel" data-track-act="remove" data-id="${index}" data-url="${escapeHTML(item.url || '')}">${tr('Cancel download')}</button>`;
     const directory = item.directory || '—';
     return `<article class="tracker-card ${done ? 'is-done' : failed ? 'is-failed' : ''}" data-tracker-key="${escapeHTML(key)}">
@@ -328,7 +325,8 @@ function renderTrackers() {
       <div class="tracker-progress"><b style="width:${done ? 100 : percent}%"></b></div>
       <div class="tracker-numbers"><span>${bytes(item.done)} / ${bytes(item.total)} · ${percent.toFixed(1)}%</span><span>${done ? '—' : humanSpeed(item.speed || 0)}</span></div>
       <div class="tracker-meta"><span>${tr('Remaining')}: ${done ? '0s' : etaText(item)}</span><span>${escapeHTML(item.queue || 'Default')}</span></div>
-      <div class="tracker-destination" title="${escapeHTML(directory)}">${tr('Destination')}: ${escapeHTML(directory)}</div>
+      <div class="tracker-destination" title="${escapeHTML(item.path || directory)}">${tr('Destination folder')}: ${escapeHTML(directory)}</div>
+      <div class="tracker-destination tracker-filepath" title="${escapeHTML(item.path || 'Not available yet')}">${tr('Destination file')}: ${escapeHTML(item.path || 'Not available yet')}</div>
       <div class="tracker-actions">${primary}<button data-track-act="open-folder" data-id="${index}" data-url="${escapeHTML(item.url || '')}">${tr('Open folder')}</button>${cancel}</div>
     </article>`;
   }).join('');
@@ -374,15 +372,17 @@ async function refresh() {
 }
 
 async function runAction(action, extra = {}, successMessage = 'Action completed') {
-  if (requestBusy) return;
-  requestBusy = true;
+  const actionKey = `${action}:${extra.url || extra.index || 'global'}`;
+  if (runAction.pending?.has(actionKey)) return;
+  runAction.pending ||= new Set();
+  runAction.pending.add(actionKey);
   try {
     await postAction(action, extra);
     await refresh();
     toast(successMessage);
   } catch (error) {
     toast(error.message || 'Sabo DM could not complete that action', 'error');
-  } finally { requestBusy = false; }
+  } finally { runAction.pending.delete(actionKey); }
 }
 
 async function addURLs() {
