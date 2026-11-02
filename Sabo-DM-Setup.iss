@@ -1,5 +1,5 @@
 #define MyAppName "Sabo DM"
-#define MyAppVersion "1.3.7"
+#define MyAppVersion "1.3.13"
 #define MyAppPublisher "Sabo DM"
 #define MyAppExeName "Sabo-DM.exe"
 

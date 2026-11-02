@@ -175,6 +175,18 @@ func startDashboardServer(q *Queue, saveDir string, dispatch func(func()), shutd
 		done := make(chan error, 1)
 		dispatch(func() {
 			var err error
+			targetIndex := a.Index
+			// Tracker actions carry the download URL as a stable identity so a
+			// concurrent list refresh/removal cannot redirect a click to another row.
+			if a.URL != "" && (a.Action == "start" || a.Action == "pause" || a.Action == "remove" || a.Action == "open-file" || a.Action == "open-folder") {
+				targetIndex = -1
+				for i, item := range q.Items {
+					if item.URL == a.URL {
+						targetIndex = i
+						break
+					}
+				}
+			}
 			switch a.Action {
 			case "add":
 				u := strings.TrimSpace(a.URL)
@@ -207,15 +219,19 @@ func startDashboardServer(q *Queue, saveDir string, dispatch func(func()), shutd
 					q.assignQueueForURL(u, a.Queue)
 				}
 			case "start", "pause":
-				if a.Index < 0 || a.Index >= len(q.Items) {
+				if targetIndex < 0 || targetIndex >= len(q.Items) {
 					err = fmt.Errorf("download no longer exists")
 				} else if a.Action == "start" {
-					q.Start(q.Items[a.Index])
+					q.Start(q.Items[targetIndex])
 				} else {
-					q.Pause(q.Items[a.Index])
+					q.Pause(q.Items[targetIndex])
 				}
 			case "remove":
-				q.Remove([]int{a.Index})
+				if targetIndex < 0 || targetIndex >= len(q.Items) {
+					err = fmt.Errorf("download no longer exists")
+				} else {
+					q.Remove([]int{targetIndex})
+				}
 			case "clear-done":
 				q.ClearDone()
 			case "add-queue":
@@ -274,16 +290,16 @@ func startDashboardServer(q *Queue, saveDir string, dispatch func(func()), shutd
 					}
 				}
 			case "open-file":
-				if a.Index < 0 || a.Index >= len(q.Items) || q.Items[a.Index].Path == "" {
+				if targetIndex < 0 || targetIndex >= len(q.Items) || q.Items[targetIndex].Path == "" {
 					err = fmt.Errorf("the file is not available yet")
 				} else {
-					openFile(q.Items[a.Index].Path)
+					openFile(q.Items[targetIndex].Path)
 				}
 			case "open-folder":
-				if a.Index < 0 || a.Index >= len(q.Items) {
+				if targetIndex < 0 || targetIndex >= len(q.Items) {
 					err = fmt.Errorf("download no longer exists")
 				} else {
-					err = openFolder(q.Items[a.Index].Dir)
+					err = openFolder(q.Items[targetIndex].Dir)
 				}
 			case "set-speed":
 				if a.Index < 0 {

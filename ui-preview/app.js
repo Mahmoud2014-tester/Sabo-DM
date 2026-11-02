@@ -22,6 +22,8 @@ let requestBusy = false;
 let lastError = '';
 let updateInfo = null;
 let toolPoll = null;
+const trackerLastStates = new Map();
+const trackerDismissed = new Set();
 
 const I18N = {
   ar: {
@@ -35,7 +37,7 @@ const I18N = {
     "↳ Supports HTTP / HTTPS / magnet links":"↳ يدعم روابط HTTP وHTTPS وMagnet","Save to:":"الحفظ في:",
     "Date added ↓":"تاريخ الإضافة ↓","Name A–Z":"الاسم أ–ي","Clear filters":"مسح عوامل التصفية","Ⅱ Pause all":"Ⅱ إيقاف الكل مؤقتًا","Clear finished":"مسح المكتمل",
     "FILE NAME":"اسم الملف","SIZE":"الحجم","PROGRESS":"التقدم","STATUS":"الحالة","ACTIONS":"الإجراءات",
-    "Download details":"تفاصيل التنزيل","Select a download to see its live transfer details":"اختر تنزيلًا لعرض تفاصيل النقل المباشرة","ENGINE SYNC":"مزامنة المحرك","Transfers":"عمليات النقل","Progress":"التقدم","Engine":"المحرك","Connected":"متصل","Parallel downloads":"التنزيلات المتوازية","Speed limit":"حد السرعة","Unlimited":"بلا حدود",
+    "Download details":"تفاصيل التنزيل","Live downloads":"التنزيلات المباشرة","File type":"نوع الملف","Destination":"مكان الحفظ","Remaining":"المتبقي","Pause":"إيقاف مؤقت","Resume":"استئناف","Cancel download":"إلغاء التنزيل","Open file":"فتح الملف","Open folder":"فتح المجلد","Cancel":"إلغاء","Select a download to see its live transfer details":"اختر تنزيلًا لعرض تفاصيل النقل المباشرة","ENGINE SYNC":"مزامنة المحرك","Transfers":"عمليات النقل","Progress":"التقدم","Engine":"المحرك","Connected":"متصل","Parallel downloads":"التنزيلات المتوازية","Speed limit":"حد السرعة","Unlimited":"بلا حدود",
     "Sabo DM Settings":"إعدادات Sabo DM","Application tools, updates and appearance":"أدوات التطبيق والتحديثات والمظهر","Appearance":"المظهر","Theme":"السمة","Dark":"داكن","Light":"فاتح","Language":"اللغة","English (Primary)":"الإنجليزية (أساسية)","العربية":"العربية","Français":"الفرنسية",
     "Media tools":"أدوات الوسائط","Checking… — required for MP3, AAC, Opus, OGG, WAV and FLAC conversion.":"جارٍ التحقق… مطلوبة للتحويل إلى MP3 وAAC وOpus وWAV وFLAC.","Install FFmpeg":"تثبيت FFmpeg","yt-dlp":"yt-dlp","Install / Update":"تثبيت / تحديث",
     "Software update":"تحديث البرنامج","Update Version":"تحديث الإصدار","Check GitHub for the latest stable release.":"تحقق من GitHub لمعرفة أحدث إصدار مستقر.","Check for updates":"التحقق من وجود تحديثات","Download and install update":"تنزيل التحديث وتثبيته","View release notes on GitHub ↗":"عرض ملاحظات الإصدار على GitHub ↗","Done":"تم",
@@ -57,7 +59,7 @@ const I18N = {
     "↳ Supports HTTP / HTTPS / magnet links":"↳ Liens HTTP / HTTPS / magnet acceptés","Save to:":"Enregistrer dans :",
     "Date added ↓":"Date d’ajout ↓","Name A–Z":"Nom A–Z","Clear filters":"Effacer les filtres","Ⅱ Pause all":"Ⅱ Tout suspendre","Clear finished":"Effacer les terminés",
     "FILE NAME":"NOM DU FICHIER","SIZE":"TAILLE","PROGRESS":"PROGRESSION","STATUS":"ÉTAT","ACTIONS":"ACTIONS",
-    "Download details":"Détails du téléchargement","Select a download to see its live transfer details":"Sélectionnez un téléchargement pour voir son transfert","ENGINE SYNC":"SYNCHRONISATION","Transfers":"Transferts","Progress":"Progression","Engine":"Moteur","Connected":"Connecté","Parallel downloads":"Téléchargements parallèles","Speed limit":"Limite de vitesse","Unlimited":"Illimitée",
+    "Download details":"Détails du téléchargement","Live downloads":"Téléchargements en direct","File type":"Type de fichier","Destination":"Destination","Remaining":"Restant","Pause":"Pause","Resume":"Reprendre","Cancel download":"Annuler le téléchargement","Open file":"Ouvrir le fichier","Open folder":"Ouvrir le dossier","Cancel":"Annuler","Select a download to see its live transfer details":"Sélectionnez un téléchargement pour voir son transfert","ENGINE SYNC":"SYNCHRONISATION","Transfers":"Transferts","Progress":"Progression","Engine":"Moteur","Connected":"Connecté","Parallel downloads":"Téléchargements parallèles","Speed limit":"Limite de vitesse","Unlimited":"Illimitée",
     "Sabo DM Settings":"Paramètres Sabo DM","Application tools, updates and appearance":"Outils, mises à jour et apparence","Appearance":"Apparence","Theme":"Thème","Dark":"Sombre","Light":"Clair","Language":"Langue","English (Primary)":"Anglais (principal)","العربية":"Arabe","Français":"Français",
     "Media tools":"Outils multimédias","Checking… — required for MP3, AAC, Opus, OGG, WAV and FLAC conversion.":"Vérification… requis pour convertir en MP3, AAC, Opus, WAV et FLAC.","Install FFmpeg":"Installer FFmpeg","yt-dlp":"yt-dlp","Install / Update":"Installer / Mettre à jour",
     "Software update":"Mise à jour du logiciel","Update Version":"Mettre à jour la version","Check GitHub for the latest stable release.":"Rechercher la dernière version stable sur GitHub.","Check for updates":"Rechercher des mises à jour","Download and install update":"Télécharger et installer","View release notes on GitHub ↗":"Voir les notes de version sur GitHub ↗","Done":"Terminé",
@@ -263,7 +265,75 @@ function renderDetails() {
   $('#detailPercent').textContent = `${percent.toFixed(1)}%`;
 }
 
-function render() { renderQueues(); renderRows(); renderStats(); renderDetails(); }
+function trackerKey(item) { return `${item.url || ''}|${item.path || item.name || ''}`; }
+function fileType(item) {
+  const source = String(item.path || item.name || item.url || '');
+  const ext = (source.match(/\.([a-z0-9]{1,8})(?:[?#].*)?$/i) || [])[1];
+  if (ext) return ext.toUpperCase();
+  if (item.kind === 'video') return 'Video';
+  if (item.kind === 'torrent') return 'Torrent';
+  return 'File';
+}
+function etaText(item) {
+  const remaining = Math.max(0, Number(item.total) - Number(item.done));
+  const speed = Number(item.speed) || 0;
+  if (remaining <= 0 && downloadState(item) === 'Completed') return '0s';
+  if (remaining <= 0 || speed <= 0) return '—';
+  const seconds = Math.ceil(remaining / speed);
+  if (!Number.isFinite(seconds) || seconds < 0) return '—';
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+}
+function renderTrackers() {
+  const host = $('#downloadTrackers');
+  if (!host) return;
+  const now = Date.now();
+  const visible = [];
+  for (const item of downloads) {
+    const key = trackerKey(item);
+    const state = downloadState(item);
+    const previous = trackerLastStates.get(key);
+    if (state !== 'Completed') trackerLastStates.set(key, state);
+    if (trackerDismissed.has(key)) continue;
+    if (state === 'Completed') {
+      if (previous && previous !== 'Completed') {
+        if (!trackerLastStates.has(`${key}|completedAt`)) trackerLastStates.set(`${key}|completedAt`, now);
+      }
+      const completedAt = trackerLastStates.get(`${key}|completedAt`);
+      if (!completedAt || now - completedAt > 6500) continue;
+    }
+    visible.push(item);
+  }
+  const active = visible.filter(item => downloadState(item) !== 'Completed');
+  const completed = visible.filter(item => downloadState(item) === 'Completed');
+  const ordered = [...active, ...completed];
+  host.innerHTML = ordered.map(item => {
+    const key = trackerKey(item);
+    const status = downloadState(item);
+    const index = Number(item.index);
+    const percent = Math.max(0, Math.min(100, Number(item.percent) || 0));
+    const paused = status === 'Paused';
+    const done = status === 'Completed';
+    const failed = status === 'Failed';
+    const primary = done
+      ? `<button data-track-act="open-file" data-id="${index}" data-url="${escapeHTML(item.url || '')}" ${item.path ? '' : 'disabled'}>${tr('Open file')}</button>`
+      : `<button data-track-act="${paused || status === 'Queued' ? 'start' : 'pause'}" data-id="${index}" data-url="${escapeHTML(item.url || '')}">${paused || status === 'Queued' ? tr('Resume') : tr('Pause')}</button>`;
+    const cancel = done ? '' : `<button class="tracker-cancel" data-track-act="remove" data-id="${index}" data-url="${escapeHTML(item.url || '')}">${tr('Cancel download')}</button>`;
+    const directory = item.directory || '—';
+    return `<article class="tracker-card ${done ? 'is-done' : failed ? 'is-failed' : ''}" data-tracker-key="${escapeHTML(key)}">
+      <div class="tracker-head"><span class="tracker-brand"><img src="sabo-logo.png" alt="">${tr('Live downloads')}</span><button class="tracker-dismiss" data-track-dismiss="${escapeHTML(key)}" aria-label="Dismiss">×</button></div>
+      <strong class="tracker-name" title="${escapeHTML(item.name || item.url)}">${escapeHTML(item.name || item.url || 'Preparing download')}</strong>
+      <div class="tracker-meta"><span>${tr('File type')}: ${escapeHTML(fileType(item))}</span><span>${escapeHTML(status)}</span></div>
+      <div class="tracker-progress"><b style="width:${done ? 100 : percent}%"></b></div>
+      <div class="tracker-numbers"><span>${bytes(item.done)} / ${bytes(item.total)} · ${percent.toFixed(1)}%</span><span>${done ? '—' : humanSpeed(item.speed || 0)}</span></div>
+      <div class="tracker-meta"><span>${tr('Remaining')}: ${done ? '0s' : etaText(item)}</span><span>${escapeHTML(item.queue || 'Default')}</span></div>
+      <div class="tracker-destination" title="${escapeHTML(directory)}">${tr('Destination')}: ${escapeHTML(directory)}</div>
+      <div class="tracker-actions">${primary}<button data-track-act="open-folder" data-id="${index}" data-url="${escapeHTML(item.url || '')}">${tr('Open folder')}</button>${cancel}</div>
+    </article>`;
+  }).join('');
+}
+function render() { renderQueues(); renderRows(); renderStats(); renderDetails(); renderTrackers(); }
 
 async function refresh() {
   try {
@@ -271,7 +341,10 @@ async function refresh() {
     const nextDownloads = Array.isArray(items) ? items : [];
     if (seenDownloadURLs !== null) {
       const fresh = nextDownloads.filter(item => item.url && !seenDownloadURLs.has(item.url));
-      if (fresh.length) showDownloadNotice(fresh[0]);
+      if (fresh.length) {
+        showDownloadNotice(fresh[0]);
+        for (const item of fresh) { trackerDismissed.delete(trackerKey(item)); trackerLastStates.delete(trackerKey(item)); trackerLastStates.delete(`${trackerKey(item)}|completedAt`); }
+      }
     }
     seenDownloadURLs = new Set(nextDownloads.map(item => item.url).filter(Boolean));
     for (const item of nextDownloads) {
@@ -508,6 +581,16 @@ function bindEvents() {
     $$('.nav[data-category]').forEach(item => item.classList.toggle('active', item === button));
     renderRows();
   }));
+  $('#downloadTrackers').addEventListener('click', async event => {
+    const dismiss = event.target.closest('[data-track-dismiss]');
+    if (dismiss) { trackerDismissed.add(dismiss.dataset.trackDismiss); renderTrackers(); return; }
+    const button = event.target.closest('button[data-track-act]');
+    if (!button || button.disabled) return;
+    const index = Number(button.dataset.id);
+    if (!Number.isInteger(index) || index < 0) { toast('This download is no longer available', 'error'); return refresh(); }
+    const action = button.dataset.trackAct;
+    await runAction(action, { index, url: button.dataset.url || '' }, action === 'remove' ? 'Download cancelled' : `${action} command sent`);
+  });
   $('#rows').addEventListener('click', async event => {
     const button = event.target.closest('button[data-act]');
     if (!button || button.disabled) return;
