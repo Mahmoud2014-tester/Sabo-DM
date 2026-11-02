@@ -362,7 +362,9 @@ async function refresh() {
       const key = item.path || '';
       const isAudioOnlyJob = String(item.mediaLabel || '').toLowerCase().startsWith('audio');
       const isMediaFile = /\.(mp4|m4v|mkv|webm|mov|avi|mp3|m4a|aac|ogg|opus|wav|flac|wma)$/i.test(key);
-      if (item.status === 'Done' && key && isMediaFile && !isAudioOnlyJob && !observedDone.has(key)) {
+      // Audio extraction belongs to the dedicated per-file tracker only.
+      // The main dashboard must never display a duplicate extraction dialog.
+      if (trackerWindowMode && item.status === 'Done' && key && isMediaFile && !isAudioOnlyJob && !observedDone.has(key)) {
         observedDone.add(key);
         if (initialRefreshDone && !audioPrompted.has(key)) offerAudioExtraction(item);
       }

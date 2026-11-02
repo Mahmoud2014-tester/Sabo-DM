@@ -64,6 +64,6 @@ async function showDownloadProgress(){
 async function act(action){if(!pending)return;const buttons=[...document.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);showStatus(t("sending"));try{const selected=$('mediaOutput').value||"video";
 const audioOnly=selected!=="video";
 const audioFormat=audioOnly?selected:"original";
-const result=await sendMessage({type:"confirm-action",id:requestId,action,audioOnly,audioFormat});if(!result?.ok)throw new Error(result?.error||t("error"));if(action==="cancel"){showStatus(t("cancelled"),"ok");setTimeout(()=>window.close(),700);return;}showStatus(action==="queue"?t("queued"):t("sent"),"ok");showDownloadProgress();}catch(error){showStatus(error.message||t("error"),"error");buttons.forEach(b=>b.disabled=false)}}
+const result=await sendMessage({type:"confirm-action",id:requestId,action,audioOnly,audioFormat});if(!result?.ok)throw new Error(result?.error||t("error"));if(action==="cancel"){showStatus(t("cancelled"),"ok");setTimeout(()=>window.close(),700);return;}showStatus(action==="queue"?t("queued"):t("sent"),"ok");setTimeout(()=>window.close(),650);}catch(error){showStatus(error.message||t("error"),"error");buttons.forEach(b=>b.disabled=false)}}
 $('download').addEventListener('click',()=>act("download"));$('queue').addEventListener('click',()=>act("queue"));$('cancel').addEventListener('click',()=>act("cancel"));
 init().catch(error=>showStatus(error.message||t("error"),"error"));

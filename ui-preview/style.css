@@ -180,3 +180,6 @@ body.tracker-mode main>*:not(#downloadTrackers){display:none!important}
 body.tracker-mode #downloadTrackers{position:static!important;display:flex!important;width:100%!important;max-height:none!important;overflow:visible!important;gap:10px;pointer-events:auto}
 body.tracker-mode .tracker-card{width:100%;box-sizing:border-box}
 body.tracker-mode .tracker-dismiss{display:none}
+
+/* Audio extraction is offered only inside the dedicated per-file tracker window. */
+body:not(.tracker-mode) #audioExtractPanel{display:none!important}
